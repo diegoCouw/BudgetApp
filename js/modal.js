@@ -268,7 +268,12 @@ function _renderDetail(tx, c, confirming) {
         '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>' +
         'Ja, verwijderen</button>' +
       '<button class="btn-ghost" id="cancel-del">Annuleren</button>'
-    : '<button class="btn-danger" id="del-btn">' +
+    : (!isTransfer
+        ? '<button class="btn-ghost" id="edit-btn" style="margin-bottom:8px;">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
+            'Bewerken</button>'
+        : '') +
+      '<button class="btn-danger" id="del-btn">' +
         '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>' +
         'Verwijderen</button>';
 
@@ -308,10 +313,108 @@ function _renderDetail(tx, c, confirming) {
       _renderDetail(tx, c, false);
     });
   } else {
+    if (!isTransfer && document.getElementById('edit-btn')) {
+      document.getElementById('edit-btn').addEventListener('click', function () {
+        openEdit(tx);
+      });
+    }
     document.getElementById('del-btn').addEventListener('click', function () {
       _renderDetail(tx, c, true);
     });
   }
+}
+
+// ── Edit transaction ──────────────────────────────────────────────────────────
+function openEdit(tx) {
+  var isExpense = (tx.type || 'expense') === 'expense';
+  _selCat = tx.cat || 'overig';
+
+  function buildEditForm(confirming, pendingData) {
+    var html = '<h2 class="mtitle">Transactie bewerken</h2>';
+
+    if (confirming && pendingData) {
+      html +=
+        '<div style="margin:0 0 16px;padding:14px;background:var(--surface2,var(--surface));border-radius:14px;font-size:14px;">' +
+          '<div style="font-weight:600;margin-bottom:4px;">Wijziging opslaan?</div>' +
+          '<div style="color:var(--muted);">' + eur(pendingData.amount) + ' · ' + fmtDay(pendingData.date) + '</div>' +
+        '</div>' +
+        '<button class="btn-primary" id="confirm-edit-btn">Ja, opslaan</button>' +
+        '<button class="btn-ghost" id="cancel-confirm-btn" style="margin-top:8px;">Terug</button>';
+
+      document.getElementById('mcontent').innerHTML = html;
+
+      document.getElementById('confirm-edit-btn').addEventListener('click', async function () {
+        await updateTx(tx.id, pendingData);
+        closeModal();
+        await render();
+      });
+      document.getElementById('cancel-confirm-btn').addEventListener('click', function () {
+        buildEditForm(false, null);
+      });
+      return;
+    }
+
+    var allCats = getCatList();
+    var catBtns = isExpense ? allCats.map(function (c) {
+      var short = c.label.length > 9 ? c.label.slice(0, 8) + '…' : c.label;
+      return '<button class="cat-btn' + (c.id === _selCat ? ' sel' : '') +
+        '" data-cat="' + c.id + '" type="button">' +
+        '<span class="emo">' + c.emoji + '</span><span>' + short + '</span></button>';
+    }).join('') : '';
+
+    html +=
+      '<div class="amt-wrap" id="amtwrap">' +
+        '<span class="amt-sign">€</span>' +
+        '<input id="amt-in" type="number" inputmode="decimal" placeholder="0,00" step="0.01" min="0" value="' + tx.amount + '">' +
+      '</div>' +
+      (isExpense ? '<div class="field-lbl">Categorie</div><div class="cat-grid" id="cg">' + catBtns + '</div>' : '') +
+      '<div class="field"><div class="field-lbl">Datum</div>' +
+        '<input class="form-in" type="date" id="date-in" value="' + tx.date + '">' +
+      '</div>' +
+      '<div class="field"><div class="field-lbl">Omschrijving (optioneel)</div>' +
+        '<input class="form-in" type="text" id="desc-in" placeholder="Bijv. Albert Heijn" maxlength="80" value="' + esc(tx.desc || '') + '">' +
+      '</div>' +
+      '<button class="btn-primary" id="save-edit-btn">Bewerken</button>';
+
+    document.getElementById('mcontent').innerHTML = html;
+
+    if (isExpense) {
+      document.getElementById('cg').addEventListener('click', function (e) {
+        var btn = e.target.closest('.cat-btn');
+        if (!btn) return;
+        _selCat = btn.dataset.cat;
+        document.querySelectorAll('.cat-btn').forEach(function (b) { b.classList.remove('sel'); });
+        btn.classList.add('sel');
+      });
+    }
+
+    document.getElementById('save-edit-btn').addEventListener('click', function () {
+      var amount = parseFloat(document.getElementById('amt-in').value.replace(',', '.'));
+      var date   = document.getElementById('date-in').value;
+      var desc   = (document.getElementById('desc-in') || {}).value || '';
+      desc = desc.trim ? desc.trim() : desc;
+
+      if (!amount || amount <= 0) {
+        document.getElementById('amtwrap').style.borderColor = 'var(--danger)';
+        document.getElementById('amt-in').focus(); return;
+      }
+      if (!date) return;
+
+      var parts = date.split('-').map(Number);
+      buildEditForm(true, {
+        amount: Math.round(amount * 100) / 100,
+        cat:    _selCat,
+        date:   date,
+        ym:     ymKey(parts[0], parts[1] - 1),
+        desc:   desc,
+        ts:     tx.ts,
+        type:   tx.type || 'expense',
+      });
+    });
+  }
+
+  buildEditForm(false, null);
+  showModal();
 }
 
 // ── Settings ──────────────────────────────────────────────────────────────────

@@ -5,6 +5,16 @@ Formaat: `[versie] dag/maand/jaar uu:mm — beschrijving`
 
 ---
 
+## [feat/edit-transaction] — 23/11/2026
+
+### ✨ Nieuw
+- **Transactie bewerken** — klik op een transactie en druk op "Bewerken" om bedrag, datum, categorie en omschrijving te wijzigen. Inline bevestiging ("Wil je deze wijziging opslaan?") vóór opslaan, zonder `confirm()`-dialoog. Overschrijvingen kunnen niet bewerkt worden.
+
+### 🧪 Tests
+- 2 nieuwe tests voor `updateTx` in db.test.js (aanpassen + id behoud).
+
+---
+
 ## [2026.11.23] — 23/11/2026
 
 ### ✨ Nieuw
