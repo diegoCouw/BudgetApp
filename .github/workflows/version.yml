@@ -18,7 +18,8 @@ jobs:
 
       - name: Versie instellen op datum van vandaag
         run: |
-          VERSION=$(python3 -c "from datetime import date; d=date.today(); print(f'{d.year}.{d.month}.{d.day}')")
+          VERSION=$(python3 -c "from datetime import date; d=date.today(); print(str(d.year)+'.'+str(d.month)+'.'+str(d.day))")
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Versie: $VERSION"
           sed -i "s/var APP_VERSION = '.*';/var APP_VERSION = '$VERSION';/" js/version.js
           sed -i "s/const CACHE = '.*';/const CACHE = 'budget-$VERSION';/" sw.js
@@ -29,6 +30,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add js/version.js sw.js
           git diff --staged --quiet && echo "Geen wijzigingen" || (
-            git commit -m "chore: versie bijgewerkt naar $(python3 -c \"from datetime import date; d=date.today(); print(f'{d.year}.{d.month}.{d.day}')\")"
+            git commit -m "chore: versie bijgewerkt naar $VERSION"
             git push
           )
