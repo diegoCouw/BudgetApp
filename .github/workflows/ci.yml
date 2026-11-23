@@ -1,4 +1,4 @@
-name: Versie bijwerken bij push
+name: CI / Deploy
 
 on:
   push:
@@ -6,10 +6,34 @@ on:
     paths-ignore:
       - 'js/version.js'
       - 'sw.js'
+  pull_request:
+    branches: [main]
 
 jobs:
-  bump-version:
+  # ── Stap 1: Tests ──────────────────────────────────────────────────────────
+  test:
+    name: Tests
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Dependencies installeren
+        run: npm ci
+
+      - name: Tests draaien
+        run: npm test
+
+  # ── Stap 2: Versie bijwerken (alleen na geslaagde tests, alleen op main) ───
+  bump-version:
+    name: Versie bijwerken
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: write
 
@@ -20,7 +44,6 @@ jobs:
         run: |
           VERSION=$(python3 -c "from datetime import date; d=date.today(); print(str(d.year)+'.'+str(d.month)+'.'+str(d.day))")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Versie: $VERSION"
           sed -i "s/var APP_VERSION = '.*';/var APP_VERSION = '$VERSION';/" js/version.js
           sed -i "s/const CACHE = '.*';/const CACHE = 'budget-$VERSION';/" sw.js
 
