@@ -45,14 +45,16 @@ async function registerSW() {
   try {
     swReg = await navigator.serviceWorker.register('./sw.js');
 
-    // Auto-detect: flag if a new SW is already waiting
-    if (swReg.waiting) updateWaiting = true;
+    // If a new SW was already waiting (e.g. app was open during previous update),
+    // apply it immediately on the next open — no manual step needed.
+    if (swReg.waiting) applyUpdate();
 
     swReg.addEventListener('updatefound', function () {
       var installing = swReg.installing;
       installing.addEventListener('statechange', function () {
         if (installing.state === 'installed' && navigator.serviceWorker.controller) {
-          updateWaiting = true;
+          // Auto-apply: reload silently so the new version is active next open
+          applyUpdate();
         }
       });
     });
