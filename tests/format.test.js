@@ -120,7 +120,3 @@ test('esc converteert getal naar string', () => {
   expect(esc(42)).toBe('42');
 });
 
-// BEWUSTE FOUT om branch protection te testen
-test('blokkeer de merge', () => {
-  expect('rood').toBe('groen');
-});
