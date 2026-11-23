@@ -1,0 +1,34 @@
+name: Versie bijwerken bij push
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'js/version.js'
+      - 'sw.js'
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Versie instellen op datum van vandaag
+        run: |
+          VERSION=$(python3 -c "from datetime import date; d=date.today(); print(f'{d.year}.{d.month}.{d.day}')")
+          echo "Versie: $VERSION"
+          sed -i "s/var APP_VERSION = '.*';/var APP_VERSION = '$VERSION';/" js/version.js
+          sed -i "s/const CACHE = '.*';/const CACHE = 'budget-$VERSION';/" sw.js
+
+      - name: Commit en push versie
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add js/version.js sw.js
+          git diff --staged --quiet && echo "Geen wijzigingen" || (
+            git commit -m "chore: versie bijgewerkt naar $(python3 -c \"from datetime import date; d=date.today(); print(f'{d.year}.{d.month}.{d.day}')\")"
+            git push
+          )
