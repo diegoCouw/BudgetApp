@@ -1,5 +1,7 @@
 # BudgetApp
 
+[![CI / Deploy](https://github.com/diegoCouw/BudgetApp/actions/workflows/ci.yml/badge.svg)](https://github.com/diegoCouw/BudgetApp/actions/workflows/ci.yml)
+
 Een persoonlijke budgeteringsapp als PWA (Progressive Web App) voor iPhone. Geen server, geen account — alle data wordt lokaal op het apparaat opgeslagen via IndexedDB.
 
 **Live:** [https://diegocouw.github.io/BudgetApp/](https://diegocouw.github.io/BudgetApp/)
