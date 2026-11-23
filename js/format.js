@@ -75,3 +75,9 @@ function esc(s) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+// Node.js / Jest exports — no effect in browser (module is undefined there)
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { CATS, CMAP, _userCats: function() { return _userCats; },
+    getCatList, getCatMap, catById, CAT_COLORS, MNL, eur, ymKey, todayISO, fmtDay, esc };
+}

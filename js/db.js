@@ -123,3 +123,12 @@ function bulkAddTxs(records) {
     tx.onerror    = function (e) { rej(e.target.error); };
   });
 }
+
+// Node.js / Jest exports — no effect in browser (module is undefined there)
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    openDB, getAllRecords, addRecord, putRecord, delRecord,
+    getTxsByYM, getAllTxs, getTxsByDateRange,
+    addTx, delTx, clearAllTxs, bulkAddTxs,
+  };
+}

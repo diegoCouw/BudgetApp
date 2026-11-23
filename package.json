@@ -1,0 +1,11 @@
+{
+  "name": "budget-app",
+  "private": true,
+  "scripts": {
+    "test": "jest --forceExit"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "fake-indexeddb": "^4.0.2"
+  }
+}

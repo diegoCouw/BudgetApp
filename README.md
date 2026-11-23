@@ -158,6 +158,23 @@ Instellingen → "Importeer data" — selecteer een eerder geëxporteerd JSON-be
 
 ---
 
+## Tests
+
+Unit tests voor `format.js` (pure functies) en `db.js` (IndexedDB CRUD) draaien automatisch bij elke push via GitHub Actions.
+
+```bash
+npm install        # eenmalig
+npm test           # alle tests lokaal draaien
+```
+
+Testbestanden staan in `tests/`. Bij elke push naar `main` draait de `Tests` workflow en blokkeert een mislukte test de deploy.
+
+Testcoverage:
+- **format.js**: categorieën, `eur()`, `ymKey()`, `todayISO()`, `fmtDay()`, `esc()`
+- **db.js**: transacties toevoegen/ophalen/verwijderen/filteren, bulkimport, goals/accounts/recurring/categories CRUD
+
+---
+
 ## Ontwikkelen
 
 Bestanden bewerken in `C:\Users\DiegoCouwenbergh\Documents\Persoonlijk\BudgetApp\`, committen en pushen naar `main`. GitHub Actions bijwerkt de versie automatisch en GitHub Pages publiceert de update binnen ~1 minuut.
