@@ -119,3 +119,8 @@ test('esc laat veilige tekst ongemoeid', () => {
 test('esc converteert getal naar string', () => {
   expect(esc(42)).toBe('42');
 });
+
+// BEWUSTE FOUT — merge blokkeer test
+test('blokkeer de merge', () => {
+  expect('rood').toBe('groen');
+});
