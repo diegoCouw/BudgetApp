@@ -15,6 +15,31 @@ var CMAP = (function () {
   return m;
 })();
 
+// User-defined categories, loaded from IndexedDB at startup by app.js
+// Each entry: { id: 'u_N', dbId: N, label, emoji, color }
+var _userCats = [];
+
+function getCatList() {
+  return CATS.concat(_userCats);
+}
+
+function getCatMap() {
+  var m = {};
+  getCatList().forEach(function (c) { m[c.id] = c; });
+  return m;
+}
+
+function catById(id) {
+  return getCatMap()[id] || CMAP['overig'];
+}
+
+// Fixed palette for user category colors
+var CAT_COLORS = [
+  '#EF4444', '#F97316', '#F59E0B', '#22C55E',
+  '#14B8A6', '#3B82F6', '#8B5CF6', '#EC4899',
+  '#06B6D4', '#10B981', '#6366F1', '#6B7280',
+];
+
 var MNL = [
   'Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni',
   'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'
@@ -23,7 +48,7 @@ var MNL = [
 var _numFmt = new Intl.NumberFormat('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function eur(n) {
-  return '€ ' + _numFmt.format(n);
+  return '€ ' + _numFmt.format(n);
 }
 
 function ymKey(y, m) {

@@ -3,7 +3,10 @@ var curY          = new Date().getFullYear();
 var curM          = new Date().getMonth();
 var activeV       = 'home';
 var swReg         = null;
-var updateWaiting = false; // set true when a new SW is installed and waiting
+var updateWaiting = false;
+var curDateFrom   = null;  // date range filter for transacties view
+var curDateTo     = null;
+var _accounts     = [];    // loaded at boot, shared with modal.js
 
 // ── Navigation ──────────────────────────────────────────────────────────
 function switchView(v) {
@@ -44,22 +47,17 @@ async function registerSW() {
   if (!('serviceWorker' in navigator)) return;
   try {
     swReg = await navigator.serviceWorker.register('./sw.js');
-
-    // If a new SW was already waiting (e.g. app was open during previous update),
-    // apply it immediately on the next open — no manual step needed.
-    if (swReg.waiting) applyUpdate();
-
+    if (swReg.waiting) updateWaiting = true;
     swReg.addEventListener('updatefound', function () {
       var installing = swReg.installing;
       installing.addEventListener('statechange', function () {
         if (installing.state === 'installed' && navigator.serviceWorker.controller) {
-          // Auto-apply: reload silently so the new version is active next open
-          applyUpdate();
+          updateWaiting = true;
         }
       });
     });
   } catch (e) {
-    console.warn('Service Worker registration failed:', e);
+    console.warn('SW registration failed:', e);
   }
 }
 
@@ -131,13 +129,77 @@ function wire() {
   }
   prevNext('h-prev', 'h-next');
   prevNext('t-prev', 't-next');
+
+  // Date range filter
+  document.getElementById('t-filter-toggle').addEventListener('click', function () {
+    var fields = document.getElementById('t-filter-fields');
+    var toggle = document.getElementById('t-filter-toggle');
+    fields.hidden = !fields.hidden;
+    toggle.classList.toggle('active', !fields.hidden);
+  });
+  document.getElementById('t-from').addEventListener('change', function () {
+    curDateFrom = this.value || null;
+    if (activeV === 'transacties') renderTransacties();
+  });
+  document.getElementById('t-to').addEventListener('change', function () {
+    curDateTo = this.value || null;
+    if (activeV === 'transacties') renderTransacties();
+  });
+  document.getElementById('t-filter-clear').addEventListener('click', function () {
+    curDateFrom = null; curDateTo = null;
+    document.getElementById('t-from').value = '';
+    document.getElementById('t-to').value   = '';
+    document.getElementById('t-filter-fields').hidden = true;
+    document.getElementById('t-filter-toggle').classList.remove('active');
+    if (activeV === 'transacties') renderTransacties();
+  });
+}
+
+// ── Recurring payments processor ────────────────────────────────────────
+async function processRecurring() {
+  try {
+    var items    = await getAllRecords('recurring');
+    var todayD   = new Date();
+    var curYM2   = ymKey(todayD.getFullYear(), todayD.getMonth());
+    var todayDay = todayD.getDate();
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      if (item.lastProcessedYM === curYM2) continue;
+      if (todayDay < item.dayOfMonth)      continue;
+      var maxDay = new Date(todayD.getFullYear(), todayD.getMonth() + 1, 0).getDate();
+      var txDay  = Math.min(item.dayOfMonth, maxDay);
+      var txDate = todayD.getFullYear() + '-' +
+                   String(todayD.getMonth() + 1).padStart(2, '0') + '-' +
+                   String(txDay).padStart(2, '0');
+      await addTx({ amount: item.amount, cat: item.cat, date: txDate, ym: curYM2,
+                    desc: item.desc || '', ts: Date.now(), type: 'expense' });
+      item.lastProcessedYM = curYM2;
+      await putRecord('recurring', item);
+    }
+  } catch (e) { console.warn('processRecurring:', e); }
 }
 
 // ── Boot ────────────────────────────────────────────────────────────────
 (async function () {
   initTheme();
   await openDB();
+
+  // Load user categories into _userCats (format.js global)
+  var userCatRecs = await getAllRecords('categories');
+  _userCats = userCatRecs.map(function (c) {
+    return { id: 'u_' + c.id, dbId: c.id, label: c.label, emoji: c.emoji, color: c.color };
+  });
+
+  // Load accounts; ensure zichtrekening exists
+  _accounts = await getAllRecords('accounts');
+  var hasZicht = _accounts.some(function (a) { return a.type === 'zicht'; });
+  if (!hasZicht) {
+    var zId = await addRecord('accounts', { name: 'Zichtrekening', type: 'zicht', startBalance: 0 });
+    _accounts.push({ id: zId, name: 'Zichtrekening', type: 'zicht', startBalance: 0 });
+  }
+
+  await processRecurring();
   wire();
   await render();
-  registerSW(); // non-blocking: runs in background
+  registerSW(); // non-blocking
 })();

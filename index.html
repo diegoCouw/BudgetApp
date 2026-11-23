@@ -57,6 +57,7 @@
         </button>
       </div>
       <div class="card"><div class="donut-wrap" id="h-donut"></div></div>
+      <div id="h-goals"></div>
       <p class="section-label">Recente transacties</p>
       <div id="h-recent"></div>
     </div>
@@ -71,6 +72,21 @@
         <button class="month-nav-btn" id="t-next">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
         </button>
+      </div>
+      <!-- Date range filter -->
+      <div class="date-filter">
+        <div class="date-filter-toggle" id="t-filter-toggle">
+          <span>Van–Tot filter</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div id="t-filter-fields" hidden>
+          <div class="date-filter-fields">
+            <input class="form-in" type="date" id="t-from">
+            <span class="date-filter-sep">t/m</span>
+            <input class="form-in" type="date" id="t-to">
+          </div>
+          <button class="btn-ghost" id="t-filter-clear" style="margin:0 14px 14px;width:calc(100% - 28px);">Filter wissen</button>
+        </div>
       </div>
       <div id="t-list"></div>
     </div>
