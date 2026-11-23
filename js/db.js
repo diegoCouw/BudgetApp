@@ -45,3 +45,26 @@ function delTx(id) {
     r.onerror   = function (e) { rej(e.target.error); };
   });
 }
+
+function clearAllTxs() {
+  return new Promise(function (res, rej) {
+    var r = _db.transaction('txs', 'readwrite').objectStore('txs').clear();
+    r.onsuccess = function () { res(); };
+    r.onerror   = function (e) { rej(e.target.error); };
+  });
+}
+
+function bulkAddTxs(records) {
+  return new Promise(function (res, rej) {
+    if (!records.length) { res(); return; }
+    var tx    = _db.transaction('txs', 'readwrite');
+    var store = tx.objectStore('txs');
+    records.forEach(function (r) {
+      // Strip id so IndexedDB assigns a fresh one
+      var rec = { amount: r.amount, cat: r.cat, date: r.date, ym: r.ym, desc: r.desc || '', ts: r.ts || Date.now() };
+      store.add(rec);
+    });
+    tx.oncomplete = function () { res(); };
+    tx.onerror    = function (e) { rej(e.target.error); };
+  });
+}

@@ -165,7 +165,12 @@ function openSettings() {
       ? '<div class="update-feedback ok" style="margin-bottom:10px;">Update gedownload — klaar om te installeren.</div>' +
         '<button class="btn-primary" id="check-upd-btn">Herladen om te installeren</button>'
       : '<button class="btn-primary" id="check-upd-btn">Controleren op updates</button>') +
-    '<div id="upd-feedback"></div>';
+    '<div id="upd-feedback"></div>' +
+    '<p class="field-lbl" style="margin-top:24px;">Data beheer</p>' +
+    '<button class="btn-primary" id="export-btn">Exporteer data</button>' +
+    '<button class="btn-ghost" id="import-btn" style="margin-top:10px;">Importeer data</button>' +
+    '<input type="file" id="import-file" accept=".json" style="display:none">' +
+    '<div id="import-preview"></div>';
 
   document.getElementById('check-upd-btn').addEventListener('click', async function () {
     var btn = document.getElementById('check-upd-btn');
@@ -202,5 +207,95 @@ function openSettings() {
     }
   });
 
+  document.getElementById('export-btn').addEventListener('click', async function () {
+    var btn = document.getElementById('export-btn');
+    btn.textContent = 'Bezig…';
+    btn.disabled    = true;
+    try {
+      var txs  = await getAllTxs();
+      var data = JSON.stringify({ version: APP_VERSION, exported: new Date().toISOString(), transactions: txs }, null, 2);
+      var blob = new Blob([data], { type: 'application/json' });
+      var url  = URL.createObjectURL(blob);
+      var a    = document.createElement('a');
+      a.href     = url;
+      a.download = 'budget-backup-' + todayISO() + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      btn.textContent = 'Exporteer data';
+      btn.disabled    = false;
+    } catch (err) {
+      btn.textContent = 'Exporteer data';
+      btn.disabled    = false;
+      var fb = document.getElementById('import-preview');
+      fb.innerHTML = '<div class="update-feedback err" style="margin-top:12px;">Export mislukt. Probeer opnieuw.</div>';
+    }
+  });
+
+  document.getElementById('import-btn').addEventListener('click', function () {
+    document.getElementById('import-file').click();
+  });
+
+  document.getElementById('import-file').addEventListener('change', function (e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      var preview = document.getElementById('import-preview');
+      try {
+        var parsed = JSON.parse(ev.target.result);
+        if (!parsed.transactions || !Array.isArray(parsed.transactions)) throw new Error('Ongeldig formaat');
+        var txs   = parsed.transactions;
+        var count = txs.length;
+        var dates = txs.map(function (t) { return t.date; }).filter(Boolean).sort();
+        var range = dates.length ? dates[0] + ' t/m ' + dates[dates.length - 1] : '—';
+        preview.innerHTML =
+          '<div style="margin-top:16px;padding:14px;background:var(--surface2);border-radius:14px;">' +
+            '<div style="font-size:14px;margin-bottom:12px;">' +
+              '<strong>' + count + ' transacties</strong><br>' +
+              '<span style="color:var(--text2);font-size:13px;">' + range + '</span>' +
+              (parsed.version ? '<br><span style="color:var(--text2);font-size:12px;">Versie: ' + esc(parsed.version) + '</span>' : '') +
+            '</div>' +
+            '<button class="btn-ghost" id="merge-btn" style="margin-bottom:8px;">Samenvoegen</button>' +
+            '<button class="btn-danger" id="replace-btn">Vervangen</button>' +
+            '<div id="import-fb"></div>' +
+          '</div>';
+
+        document.getElementById('merge-btn').addEventListener('click', async function () {
+          await _doImport(txs, false);
+        });
+        document.getElementById('replace-btn').addEventListener('click', async function () {
+          document.getElementById('import-fb').innerHTML =
+            '<div style="margin-top:10px;padding:12px;background:var(--danger-t);border-radius:10px;font-size:13px;color:var(--danger);text-align:center;">Alle bestaande transacties worden gewist. Doorgaan?</div>' +
+            '<button class="btn-danger" id="confirm-replace" style="margin-top:8px;">Ja, vervangen</button>' +
+            '<button class="btn-ghost" id="cancel-replace" style="margin-top:8px;">Annuleren</button>';
+          document.getElementById('confirm-replace').addEventListener('click', async function () {
+            await _doImport(txs, true);
+          });
+          document.getElementById('cancel-replace').addEventListener('click', function () {
+            document.getElementById('import-fb').innerHTML = '';
+          });
+        });
+      } catch (_) {
+        preview.innerHTML = '<div class="update-feedback err" style="margin-top:12px;">Ongeldig bestand. Zorg dat je een geldige Budget-export gebruikt.</div>';
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
   showModal();
+}
+
+async function _doImport(txs, replace) {
+  var fb = document.getElementById('import-fb') || document.getElementById('import-preview');
+  try {
+    if (replace) await clearAllTxs();
+    await bulkAddTxs(txs);
+    closeModal();
+    await render();
+  } catch (_) {
+    if (fb) fb.innerHTML = '<div class="update-feedback err" style="margin-top:12px;">Import mislukt. Probeer opnieuw.</div>';
+  }
 }
