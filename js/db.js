@@ -99,6 +99,15 @@ function delTx(id) {
   });
 }
 
+function updateTx(id, data) {
+  return new Promise(function (res, rej) {
+    var rec = Object.assign({}, data, { id: id });
+    var r = _db.transaction('txs', 'readwrite').objectStore('txs').put(rec);
+    r.onsuccess = function () { res(); };
+    r.onerror   = function (e) { rej(e.target.error); };
+  });
+}
+
 function clearAllTxs() {
   return new Promise(function (res, rej) {
     var r = _db.transaction('txs', 'readwrite').objectStore('txs').clear();
@@ -129,6 +138,6 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     openDB, getAllRecords, addRecord, putRecord, delRecord,
     getTxsByYM, getAllTxs, getTxsByDateRange,
-    addTx, delTx, clearAllTxs, bulkAddTxs,
+    addTx, updateTx, delTx, clearAllTxs, bulkAddTxs,
   };
 }

@@ -140,3 +140,21 @@ test('addRecord voor categories slaat eigen categorie op', async () => {
   const cats = await db.getAllRecords('categories');
   expect(cats[0].label).toBe('Huisdieren');
 });
+
+test('updateTx past bestaande transactie aan', async () => {
+  const id = await db.addTx({ amount: 50, cat: 'boodschappen', date: '2026-11-01', ym: '2026-11', desc: 'AH', ts: Date.now(), type: 'expense' });
+  await db.updateTx(id, { amount: 75, cat: 'overig', date: '2026-11-01', ym: '2026-11', desc: 'Lidl', ts: Date.now(), type: 'expense' });
+  const txs = await db.getAllTxs();
+  expect(txs).toHaveLength(1);
+  expect(txs[0].amount).toBe(75);
+  expect(txs[0].desc).toBe('Lidl');
+  expect(txs[0].id).toBe(id);
+});
+
+test('updateTx behoudt het originele id', async () => {
+  const id = await db.addTx({ amount: 10, cat: 'overig', date: '2026-11-02', ym: '2026-11', desc: 'test', ts: 1000, type: 'expense' });
+  await db.updateTx(id, { amount: 20, cat: 'overig', date: '2026-11-02', ym: '2026-11', desc: 'test2', ts: 1000, type: 'expense' });
+  const txs = await db.getAllTxs();
+  expect(txs[0].id).toBe(id);
+  expect(txs[0].amount).toBe(20);
+});
