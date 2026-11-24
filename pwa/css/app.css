@@ -546,6 +546,14 @@ select.form-in { cursor: pointer; }
 .bank-login-btn { width: 100%; margin-top: 4px; }
 .bank-login-err { color: var(--danger); font-size: .85rem; }
 .bank-login .form-in { width: 100%; }
+.pw-wrap { position: relative; width: 100%; }
+.pw-wrap .form-in { width: 100%; padding-right: 44px; }
+.pw-toggle {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; color: var(--muted); padding: 4px;
+  display: flex; align-items: center;
+}
+.pw-toggle:hover { color: var(--fg); }
 
 .bank-header { padding: 12px 14px 0; }
 .bank-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
