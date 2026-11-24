@@ -2,12 +2,12 @@ name: CI / Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 jobs:
-  # ── Stap 1: Tests ──────────────────────────────────────────────────────────
+  # ── Tests ──────────────────────────────────────────────────────────────────
   test:
     name: Tests
     runs-on: ubuntu-latest
@@ -25,3 +25,75 @@ jobs:
       - name: Tests draaien
         run: npm test
 
+  # ── Deploy preview (develop → /dev/) ──────────────────────────────────────
+  deploy-preview:
+    name: Deploy preview
+    needs: test
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          destination_dir: dev
+          keep_files: true
+          exclude_assets: '.github,node_modules,tests,package.json,package-lock.json'
+
+  # ── Deploy productie (main → /) ────────────────────────────────────────────
+  deploy-production:
+    name: Deploy productie
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detecteer major versie wijziging
+        run: |
+          NEW_MAJOR=$(grep APP_VERSION js/version.js | sed "s/.*'\([0-9]*\)\..*/\1/")
+          OLD_MAJOR=$(git show origin/gh-pages:js/version.js 2>/dev/null \
+            | grep APP_VERSION \
+            | sed "s/.*'\([0-9]*\)\..*/\1/" || echo "$NEW_MAJOR")
+          echo "NEW_MAJOR=$NEW_MAJOR" >> $GITHUB_ENV
+          if [ "$NEW_MAJOR" != "$OLD_MAJOR" ] && git show origin/gh-pages:js/version.js &>/dev/null; then
+            echo "ARCHIVE=true" >> $GITHUB_ENV
+            echo "ARCHIVE_VERSION=$OLD_MAJOR" >> $GITHUB_ENV
+          fi
+
+      - name: Haal huidige productie op voor archief
+        if: env.ARCHIVE == 'true'
+        run: |
+          mkdir /tmp/old-prod
+          cd /tmp/old-prod
+          git init -q
+          git remote add origin https://github.com/${{ github.repository }}.git
+          git fetch origin gh-pages --depth=1 -q
+          git checkout FETCH_HEAD -- . 2>/dev/null || true
+          # Verwijder subdirs die niet gearchiveerd worden
+          rm -rf dev v[0-9]* .git
+
+      - name: Archiveer vorige major versie
+        if: env.ARCHIVE == 'true'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: /tmp/old-prod
+          destination_dir: v${{ env.ARCHIVE_VERSION }}
+          keep_files: true
+
+      - name: Deploy naar productie
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          keep_files: true
+          exclude_assets: '.github,node_modules,tests,package.json,package-lock.json'
