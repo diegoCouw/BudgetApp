@@ -775,7 +775,7 @@ function openSettings() {
   if (document.getElementById('notif-reset-btn')) {
     document.getElementById('notif-reset-btn').addEventListener('click', function () {
       try {
-        var n = new Notification('Budget App', { body: 'Meldingen werken correct! 🎉', tag: 'test' });
+        var n = new Notification('Prospero', { body: 'Meldingen werken correct! 🎉', tag: 'test' });
         setTimeout(function () { try { n.close(); } catch (_) {} }, 4000);
       } catch (_) {}
     });
