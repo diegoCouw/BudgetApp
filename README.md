@@ -2,7 +2,9 @@
 
 [![CI / Deploy](https://github.com/diegoCouw/BudgetApp/actions/workflows/ci.yml/badge.svg)](https://github.com/diegoCouw/BudgetApp/actions/workflows/ci.yml)
 
-Persoonlijke budget- en spaartrackerapp. Lokale data op het apparaat, bankintegratie via een cloud-backend.
+Persoonlijke budget- en spaartrackerapp voor één gebruiker. Lokale data op het apparaat (IndexedDB), bankintegratie via een cloud-backend (Azure + Neon PostgreSQL).
+
+**Kernfunctionaliteit:** dagelijkse bank pull → push notificatie → transacties categoriseren.
 
 **Productie (PWA):** [https://diegocouw.github.io/BudgetApp/](https://diegocouw.github.io/BudgetApp/)  
 **Preview (develop):** [https://diegocouw.github.io/BudgetApp/dev/](https://diegocouw.github.io/BudgetApp/dev/)
@@ -15,44 +17,45 @@ Persoonlijke budget- en spaartrackerapp. Lokale data op het apparaat, bankintegr
 BudgetApp/
 ├── pwa/                        # Vanilla JS PWA — live op GitHub Pages
 │   ├── index.html
-│   ├── sw.js
+│   ├── sw.js                   # Service Worker, cache-naam = budget-{APP_VERSION}
 │   ├── manifest.json
 │   ├── css/app.css
 │   ├── js/
-│   │   ├── version.js          # Handmatig bijwerken bij release (semver)
+│   │   ├── version.js          # APP_VERSION — handmatig bijwerken bij release (semver)
 │   │   ├── format.js           # Helpers: eur(), ymKey(), fmtDay(), esc(), categorieën
 │   │   ├── db.js               # IndexedDB-wrapper (5 stores)
 │   │   ├── render.js           # View-renderers (home, transacties, statistieken)
 │   │   ├── modal.js            # Modal + swipe-to-dismiss
+│   │   ├── bank.js             # Bank tab: login, koppelen, sync, categoriseren
 │   │   └── app.js              # Boot, global state, service worker
-│   └── icons/icon.svg
+│   └── icons/
 │
 ├── app/
-│   ├── frontend/               # Angular 22 + Capacitor (toekomstige native app)
-│   │   ├── src/app/
-│   │   │   ├── core/
-│   │   │   │   ├── database.ts     SQLite service (5 tabellen, zelfde schema als IndexedDB)
-│   │   │   │   ├── auth.ts         Biometric unlock (Face ID / vingerafdruk)
-│   │   │   │   └── auth-guard.ts   Route guard → /lock
-│   │   │   └── pages/
-│   │   │       ├── lock/           Lock screen
-│   │   │       └── dashboard/      Dashboard (skelet)
-│   │   └── capacitor.config.ts     appId: be.prospero.app
+│   ├── frontend/               # Angular 22 + Capacitor (toekomstige native app — niet actief)
 │   │
 │   └── backend/                # ASP.NET Core 11 Minimal API
 │       ├── Endpoints/
 │       │   ├── AuthEndpoints.cs    POST /auth/login
+│       │   ├── BankEndpoints.cs    POST /bank/connect, GET /bank/callback,
+│       │   │                       GET /bank/sync, GET /transactions,
+│       │   │                       PATCH /transactions/{id}/category
 │       │   └── HealthEndpoints.cs  GET /health
 │       ├── Services/
-│       │   └── TokenService.cs     JWT generatie (HS256)
-│       ├── Program.cs              DI, middleware, CORS, JWT configuratie
-│       ├── Dockerfile              Multi-stage build, poort 8080
-│       └── appsettings.json        Basis config (geen secrets)
+│       │   ├── TokenService.cs         JWT generatie (HS256, 60 min)
+│       │   ├── EnableBankingService.cs Enable Banking API-wrapper
+│       │   └── BankSessionStore.cs     In-memory sessie store
+│       ├── Data/
+│       │   ├── AppDbContext.cs         EF Core DbContext
+│       │   └── Entities.cs            TransactionEntity, BankSessionEntity
+│       ├── Migrations/                EF Core migrations (auto-apply bij deploy)
+│       ├── Program.cs                 DI, CORS, JWT, auto-migrate
+│       └── Dockerfile                 Multi-stage build, poort 8080
 │
 ├── tests/                      # Jest unit tests voor pwa/js/
 │   ├── format.test.js
 │   └── db.test.js
 │
+├── app/Prospero.slnx           # Visual Studio solution
 └── .github/workflows/
     ├── ci.yml                  # Tests + deploy PWA naar GitHub Pages
     └── deploy-backend.yml      # Docker build + deploy naar Azure Container Apps
@@ -84,26 +87,30 @@ Bij een major versie-bump archiveert de CI de huidige productie naar `/vN/`.
 
 ## Backend
 
-De ASP.NET Core backend draait op **Azure Container Apps** (North Europe).  
-Zie [AZURE.md](AZURE.md) voor de volledige setup en kostenoverzicht.
+De ASP.NET Core backend draait op **Azure Container Apps** (North Europe — Dublin).  
+Zie [AZURE.md](AZURE.md) voor de volledige setup, secrets-beheer en kostenoverzicht.
+
+**Backend URL:** `https://prospero-api.agreeablecliff-581de768.northeurope.azurecontainerapps.io`
 
 | Endpoint | Auth | Beschrijving |
 |---|---|---|
 | `GET /health` | Nee | Health check + versie |
-| `POST /auth/login` | Nee | Wachtwoord → JWT token |
+| `POST /auth/login` | Nee | Wachtwoord → JWT token (60 min) |
 | `POST /bank/connect` | JWT | Start Enable Banking consent flow → redirect-URL naar bank |
 | `GET /bank/callback` | Nee | Ontvangt OAuth2 code → wisselt in voor session, slaat accounts op |
-| `GET /bank/sync` | JWT | Haalt nieuwe transacties op en slaat ze op in database |
+| `GET /bank/sync` | JWT | Haalt nieuwe transacties op (params: `from`, `to` als `yyyy-MM-dd`) |
 | `GET /transactions` | JWT | Geeft opgeslagen transacties terug (filter: `from`, `to`, `category`) |
 | `PATCH /transactions/{id}/category` | JWT | Stelt categorie in op een transactie |
 
-Secrets (JWT key, wachtwoord hash, Enable Banking private key, Neon connection string) staan uitsluitend als Azure Container App secrets — nooit in code of git.
+Alle secrets staan uitsluitend als **Azure Container App secrets** — nooit in code of git.  
+De container schaalt naar nul bij inactiviteit (geen kosten). Cold start: ~3 seconden.
 
 ---
 
 ## Database
 
-Transacties en bank-sessies worden opgeslagen in **Neon.tech** (gratis PostgreSQL, EU West).
+Bankgegevens worden opgeslagen in **Neon.tech** (gratis forever tier, PostgreSQL, EU Central — Frankfurt).  
+PWA-data (budgetten, categorieën, etc.) staat **lokaal** op het apparaat in IndexedDB.
 
 | Tabel | Beschrijving |
 |---|---|
@@ -111,7 +118,12 @@ Transacties en bank-sessies worden opgeslagen in **Neon.tech** (gratis PostgreSQ
 | `BankSessions` | Enable Banking OAuth2 sessie — geldig 90 dagen |
 
 De database wordt automatisch gemigreerd bij elke deploy (`db.Database.Migrate()`).  
-Verbinding via directe Neon endpoint (geen pooler) voor compatibiliteit met EF Core migrations.
+Verbinding via **directe Neon endpoint** (zonder `-pooler`) — de pooler blokkeert EF Core DDL statements.
+
+Connection string formaat (Npgsql key-value — NIET URI-formaat):
+```
+Host=...;Database=neondb;Username=neondb_owner;Password=...;SSL Mode=Require
+```
 
 ---
 
@@ -175,12 +187,12 @@ Angular-tests in `app/frontend/` draaien apart via `ng test`.
 ```js
 var curY          // Huidig geselecteerd jaar (Number)
 var curM          // Huidig geselecteerde maand, 0-gebaseerd (Number)
-var activeV       // Actieve view: 'home' | 'transacties' | 'statistieken'
+var activeV       // Actieve view: 'home' | 'transacties' | 'statistieken' | 'bank'
 var swReg         // ServiceWorkerRegistration object
 var updateWaiting // true als er een wachtende SW-update is
 ```
 
-Script-laadvolgorde: `version.js → format.js → db.js → render.js → modal.js → app.js`
+Script-laadvolgorde: `version.js → format.js → db.js → render.js → modal.js → bank.js → app.js`
 
 ### IndexedDB (pwa/js/db.js)
 
@@ -196,7 +208,7 @@ Database: `budget_v1` (versie 2), 5 stores:
 
 ### Service Worker & Updates
 
-Cache-naam bevat de versie (`budget-1.1.0`) zodat bij een nieuwe versie de oude cache automatisch verdwijnt.
+Cache-naam bevat de versie (`budget-1.2.0`) zodat bij een nieuwe versie de oude cache automatisch verdwijnt.
 
 Update-flow:
 1. Instellingen → "Controleren op updates" → `swReg.update()`
