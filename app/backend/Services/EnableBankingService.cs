@@ -93,6 +93,13 @@ public class EnableBankingService(IConfiguration config, HttpClient http)
         return new BankSession(sessionId, accountIds, DateTime.UtcNow.AddDays(89));
     }
 
+    // Debug: haal ASPSP-lijst op voor een land
+    public async Task<string> GetAspspsRawAsync(string country)
+    {
+        var resp = await http.SendAsync(BuildRequest(HttpMethod.Get, $"/aspsps?country={country}"));
+        return await resp.Content.ReadAsStringAsync();
+    }
+
     // Dagelijkse pull: haal transacties op voor één rekening
     public async Task<List<BankTransaction>> GetTransactionsAsync(string sessionId, string accountId, DateOnly from, DateOnly to)
     {
