@@ -102,7 +102,12 @@ public class EnableBankingService(IConfiguration config, HttpClient http)
     {
         var path = $"/accounts/{accountId}/transactions?date_from={from:yyyy-MM-dd}&date_to={to:yyyy-MM-dd}&session_id={sessionId}";
         var resp = await http.SendAsync(BuildRequest(HttpMethod.Get, path));
-        resp.EnsureSuccessStatusCode();
+        if (!resp.IsSuccessStatusCode)
+        {
+            var errBody = await resp.Content.ReadAsStringAsync();
+            Console.Error.WriteLine($"[Bank] account {accountId} {(int)resp.StatusCode}: {errBody}");
+            return [];
+        }
 
         var json = JsonNode.Parse(await resp.Content.ReadAsStringAsync())!;
         var txs = new List<BankTransaction>();
