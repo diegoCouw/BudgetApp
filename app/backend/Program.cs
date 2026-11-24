@@ -65,17 +65,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    try
-    {
-        db.Database.Migrate();
-        Console.WriteLine("[DB] Migrations succesvol uitgevoerd.");
-    }
-    catch (Exception ex)
-    {
-        Console.Error.WriteLine($"[DB] Migration mislukt: {ex.Message}");
-        Console.Error.WriteLine($"[DB] Inner: {ex.InnerException?.Message}");
-        // App blijft draaien — endpoints beschikbaar, DB-calls geven 500
-    }
+    db.Database.Migrate();
 }
 
 app.UseExceptionHandler(err => err.Run(async ctx =>
