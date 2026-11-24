@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Prospero.Api;
 using Prospero.Api.Services;
+using Prospero.Api.Models;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,7 +30,8 @@ builder.Services.AddAuthorization();
 
 // ── Services ──────────────────────────────────────────────────────────────
 builder.Services.AddSingleton<TokenService>();
-builder.Services.AddHttpClient(); // voor bank API calls later
+builder.Services.AddSingleton<BankSessionStore>();
+builder.Services.AddHttpClient<EnableBankingService>();
 
 // ── CORS (Angular dev server) ─────────────────────────────────────────────
 builder.Services.AddCors(options =>
@@ -61,5 +63,6 @@ if (app.Environment.IsDevelopment())
 // ── Endpoints registreren ─────────────────────────────────────────────────
 app.MapAuthEndpoints();
 app.MapHealthEndpoints();
+app.MapBankEndpoints();
 
 app.Run();
