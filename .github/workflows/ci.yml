@@ -40,9 +40,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Versie instellen op datum van vandaag
+      - name: Versie instellen op datum + uur (CET/CEST)
         run: |
-          VERSION=$(python3 -c "from datetime import date; d=date.today(); print(str(d.year)+'.'+str(d.month)+'.'+str(d.day))")
+          VERSION=$(TZ="Europe/Brussels" python3 -c "from datetime import datetime; d=datetime.now(); print(str(d.year)+'.'+str(d.month)+'.'+str(d.day)+'.'+str(d.hour))")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           sed -i "s/var APP_VERSION = '.*';/var APP_VERSION = '$VERSION';/" js/version.js
           sed -i "s/const CACHE = '.*';/const CACHE = 'budget-$VERSION';/" sw.js
