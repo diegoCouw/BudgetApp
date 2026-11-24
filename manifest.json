@@ -1,7 +1,7 @@
 {
-  "name": "Budget",
-  "short_name": "Budget",
-  "description": "Persoonlijke budgetting app",
+  "name": "Prospero",
+  "short_name": "Prospero",
+  "description": "Savings insights — slim je financiën beheren",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
