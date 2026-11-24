@@ -58,6 +58,8 @@ Image gepusht naar ghcr.io/diegocouw/prospero-api:latest
 az containerapp update → Azure haalt nieuw image op
        ↓
 Container App draait nieuwe versie (zero-downtime rolling update)
+       ↓
+Smoke test: GET /health → bevestigt dat de nieuwe container draait
 ```
 
 ---
@@ -107,6 +109,7 @@ Ingesteld op de `diegoCouw/BudgetApp` repository:
 | `AZURE_RESOURCE_GROUP` | `prospero-rg` |
 | `AZURE_CONTAINERAPP_NAME` | `prospero-api` |
 | `AZURE_LOCATION` | `northeurope` |
+| `BACKEND_URL` | `https://prospero-api.agreeablecliff-581de768.northeurope.azurecontainerapps.io` |
 
 ---
 
