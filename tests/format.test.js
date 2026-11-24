@@ -119,3 +119,110 @@ test('esc laat veilige tekst ongemoeid', () => {
 test('esc converteert getal naar string', () => {
   expect(esc(42)).toBe('42');
 });
+
+test('esc laat enkele aanhalingstekens ongemoeid', () => {
+  expect(esc("it's")).toBe("it's");
+});
+
+test('esc verwerkt lege string', () => {
+  expect(esc('')).toBe('');
+});
+
+test('esc escapet combinatie van speciale tekens', () => {
+  expect(esc('<b>Hallo & "wereld"</b>')).toBe('&lt;b&gt;Hallo &amp; &quot;wereld&quot;&lt;/b&gt;');
+});
+
+// ── getCatMap ────────────────────────────────────────────────────────────────
+
+const { getCatMap } = require('../js/format.js');
+
+test('getCatMap geeft object terug met category ids als keys', () => {
+  const map = getCatMap();
+  expect(typeof map).toBe('object');
+  expect(map['boodschappen']).toBeDefined();
+  expect(map['overig']).toBeDefined();
+});
+
+test('getCatMap bevat alle 8 ingebouwde categorieën', () => {
+  const map = getCatMap();
+  expect(Object.keys(map).length).toBeGreaterThanOrEqual(8);
+});
+
+test('getCatMap waarden hebben id, label, emoji en color', () => {
+  const map = getCatMap();
+  Object.values(map).forEach(c => {
+    expect(c).toHaveProperty('id');
+    expect(c).toHaveProperty('label');
+    expect(c).toHaveProperty('emoji');
+    expect(c).toHaveProperty('color');
+  });
+});
+
+// ── catById edge cases ───────────────────────────────────────────────────────
+
+test('catById met undefined valt terug op overig', () => {
+  expect(catById(undefined).id).toBe('overig');
+});
+
+test('catById met lege string valt terug op overig', () => {
+  expect(catById('').id).toBe('overig');
+});
+
+test('catById vindt alle 8 ingebouwde categorieën', () => {
+  CATS.forEach(c => {
+    expect(catById(c.id).id).toBe(c.id);
+  });
+});
+
+// ── eur edge cases ───────────────────────────────────────────────────────────
+
+test('eur formatteert negatief getal', () => {
+  const result = eur(-15.5);
+  expect(result).toContain('€');
+  expect(result).toContain('15');
+});
+
+test('eur formatteert groot getal', () => {
+  const result = eur(1234567.89);
+  expect(result).toContain('€');
+  expect(result).toContain('1');
+});
+
+test('eur heeft altijd 2 decimalen voor gehele getallen', () => {
+  expect(eur(100)).toMatch(/100[.,]00/);
+});
+
+// ── ymKey edge cases ─────────────────────────────────────────────────────────
+
+test('ymKey met maand 11 geeft december (maand 12)', () => {
+  expect(ymKey(2026, 11)).toBe('2026-12');
+});
+
+test('ymKey werkt over jaargrens', () => {
+  expect(ymKey(2027, 0)).toBe('2027-01');
+});
+
+test('ymKey padt enkele maandcijfers correct', () => {
+  for (let m = 0; m < 9; m++) {
+    expect(ymKey(2026, m)).toMatch(/2026-0\d/);
+  }
+});
+
+// ── fmtDay edge cases ────────────────────────────────────────────────────────
+
+test('fmtDay formatteert eerste dag van het jaar', () => {
+  const result = fmtDay('2026-01-01');
+  expect(typeof result).toBe('string');
+  expect(result).toContain('1');
+});
+
+test('fmtDay formatteert laatste dag van het jaar', () => {
+  const result = fmtDay('2026-12-31');
+  expect(typeof result).toBe('string');
+  expect(result).toContain('31');
+});
+
+test('fmtDay formatteert datum met voorloopnul correct', () => {
+  const result = fmtDay('2026-03-05');
+  expect(result).toContain('5');
+});

@@ -2,7 +2,14 @@
   "name": "budget-app",
   "private": true,
   "scripts": {
-    "test": "jest --forceExit"
+    "test": "jest --forceExit",
+    "coverage": "jest --forceExit --coverage"
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "js/format.js",
+      "js/db.js"
+    ]
   },
   "devDependencies": {
     "jest": "^29.7.0",
