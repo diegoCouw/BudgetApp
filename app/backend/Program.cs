@@ -49,7 +49,8 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-app.UseHttpsRedirection();
+// HTTPS wordt afgehandeld door Azure Container Apps — niet door de container zelf
+// app.UseHttpsRedirection();
 app.UseCors("frontend");
 app.UseAuthentication();
 app.UseAuthorization();
