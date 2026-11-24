@@ -727,6 +727,20 @@ function openSettings() {
     _settingsLink('link-accounts',  '🏦', 'Rekeningen',       'Zicht- en spaarrekeningen') +
     _settingsLink('link-recurring', '🔄', 'Domicilieringen',  'Vaste maandelijkse betalingen') +
 
+    '<p class="field-lbl" style="margin-top:20px;">Meldingen</p>' +
+    (function () {
+      if (!('Notification' in window)) return '<div style="color:var(--muted);font-size:13px;">Meldingen worden niet ondersteund door deze browser.</div>';
+      var perm = Notification.permission;
+      if (perm === 'granted')
+        return '<div class="update-feedback ok" style="margin-bottom:8px;">Meldingen ingeschakeld ✓</div>' +
+               '<button class="btn-ghost" id="notif-reset-btn" style="font-size:13px;">Stuur test-melding</button>';
+      if (perm === 'denied')
+        return '<div class="update-feedback err">Meldingen geblokkeerd. Sta ze toe via de browserinstellingen.</div>';
+      return '<button class="btn-primary" id="notif-enable-btn">Meldingen inschakelen</button>' +
+             '<div style="color:var(--muted);font-size:12px;margin-top:4px;">Je ontvangt een melding als een budgetdoelstelling 80% bereikt.</div>';
+    })() +
+    '<div id="notif-feedback"></div>' +
+
     '<p class="field-lbl" style="margin-top:20px;">Updates</p>' +
     (updateWaiting
       ? '<div class="update-feedback ok" style="margin-bottom:10px;">Update gedownload — klaar om te installeren.</div>' +
@@ -740,6 +754,32 @@ function openSettings() {
     '<button class="btn-ghost" id="import-btn" style="margin-top:10px;">Importeer data</button>' +
     '<input type="file" id="import-file" accept=".json" style="display:none">' +
     '<div id="import-preview"></div>';
+
+  // Notification handlers
+  if (document.getElementById('notif-enable-btn')) {
+    document.getElementById('notif-enable-btn').addEventListener('click', async function () {
+      var fb = document.getElementById('notif-feedback');
+      try {
+        var result = await Notification.requestPermission();
+        if (result === 'granted') {
+          fb.innerHTML = '<div class="update-feedback ok" style="margin-top:8px;">Meldingen ingeschakeld ✓</div>';
+          setTimeout(openSettings, 1200);
+        } else {
+          fb.innerHTML = '<div class="update-feedback err" style="margin-top:8px;">Toestemming geweigerd.</div>';
+        }
+      } catch (e) {
+        fb.innerHTML = '<div class="update-feedback err" style="margin-top:8px;">Kan geen toestemming vragen.</div>';
+      }
+    });
+  }
+  if (document.getElementById('notif-reset-btn')) {
+    document.getElementById('notif-reset-btn').addEventListener('click', function () {
+      try {
+        var n = new Notification('Budget App', { body: 'Meldingen werken correct! 🎉', tag: 'test' });
+        setTimeout(function () { try { n.close(); } catch (_) {} }, 4000);
+      } catch (_) {}
+    });
+  }
 
   document.getElementById('link-goals').addEventListener('click',     openGoalsSettings);
   document.getElementById('link-cats').addEventListener('click',      openCatsSettings);
