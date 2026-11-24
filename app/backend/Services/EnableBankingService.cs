@@ -68,9 +68,11 @@ public class EnableBankingService(IConfiguration config, HttpClient http)
         };
 
         var resp = await http.SendAsync(BuildRequest(HttpMethod.Post, "/auth", body));
-        resp.EnsureSuccessStatusCode();
+        var responseBody = await resp.Content.ReadAsStringAsync();
+        if (!resp.IsSuccessStatusCode)
+            throw new InvalidOperationException($"Enable Banking /auth fout {(int)resp.StatusCode}: {responseBody}");
 
-        var json = JsonNode.Parse(await resp.Content.ReadAsStringAsync());
+        var json = JsonNode.Parse(responseBody);
         return json!["url"]!.GetValue<string>();
     }
 
