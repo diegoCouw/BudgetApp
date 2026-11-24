@@ -5,6 +5,13 @@ Formaat: `[versie] dag/maand/jaar uu:mm — beschrijving`
 
 ---
 
+## [feat/csv-export] — 24/11/2026
+
+### ✨ Nieuw
+- **CSV-export** — exporteer alle transacties als CSV-bestand (puntkomma-gescheiden, UTF-8 BOM voor Excel op nl-BE). Kolommen: Datum (dd/mm/yyyy), Type, Categorie, Omschrijving, Bedrag. Knop staat in Instellingen → Data beheer.
+
+---
+
 ## [feat/rollover] — 24/11/2026
 
 ### ✨ Nieuw
