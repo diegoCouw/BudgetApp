@@ -534,3 +534,50 @@ body::before {
 
 /* select reuses .form-in styles */
 select.form-in { cursor: pointer; }
+
+/* ── Bank view ─────────────────────────────────────────────────────────── */
+.bank-login {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 48px 24px 24px; gap: 12px;
+}
+.bank-login-icon { margin-bottom: 8px; }
+.bank-login-title { font-family: 'Space Grotesk', sans-serif; font-size: 1.3rem; font-weight: 600; }
+.bank-login-sub { color: var(--muted); font-size: .875rem; margin-bottom: 4px; }
+.bank-login-btn { width: 100%; margin-top: 4px; }
+.bank-login-err { color: var(--danger); font-size: .85rem; }
+.bank-login .form-in { width: 100%; }
+
+.bank-header { padding: 12px 14px 0; }
+.bank-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.bank-action-btn { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; justify-content: center; font-size: .85rem; padding: 8px 12px; }
+.bank-logout-btn {
+  display: flex; align-items: center; padding: 8px; color: var(--muted);
+  background: none; border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
+}
+.bank-logout-btn:hover { color: var(--danger); border-color: var(--danger); }
+.bank-status { font-size: .8rem; color: var(--muted); padding: 6px 2px 0; min-height: 20px; }
+.bank-status-err { color: var(--danger); }
+
+.bank-filter { padding: 10px 14px 2px; }
+.bank-filter .search-in { width: 100%; }
+
+.bank-tx-row { cursor: pointer; }
+.bank-tx-row:hover { background: var(--accent-t); }
+.bank-cat-label {
+  font-size: .78rem; color: var(--accent); cursor: pointer; margin-top: 2px;
+  display: block;
+}
+.bank-cat-label em { color: var(--subtle); font-style: normal; }
+.bank-amt-credit { color: #16a34a; }
+.bank-amt-debit  { color: var(--fg); }
+.bank-empty { padding: 32px 14px; color: var(--muted); text-align: center; font-size: .9rem; }
+
+.bank-cat-grid { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0 8px; }
+.bank-cat-chip {
+  padding: 6px 12px; border-radius: 20px; font-size: .82rem;
+  background: var(--accent-t); color: var(--accent);
+  border: 1px solid var(--accent); cursor: pointer;
+}
+.bank-cat-chip:hover { background: var(--accent); color: #fff; }
+
+.bank-more-btn { width: calc(100% - 28px); margin: 8px 14px; }

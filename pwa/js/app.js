@@ -25,7 +25,8 @@ async function render() {
   if      (activeV === 'home')         await renderHome();
   else if (activeV === 'transacties')  await renderTransacties();
   else if (activeV === 'statistieken') await renderStats();
-  checkNotifications();
+  else if (activeV === 'bank')         await renderBank();
+  if (activeV !== 'bank') checkNotifications();
 }
 
 // ── Theme ───────────────────────────────────────────────────────────────
