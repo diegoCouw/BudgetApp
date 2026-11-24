@@ -2,7 +2,28 @@
 var BACKEND = 'https://prospero-api.agreeablecliff-581de768.northeurope.azurecontainerapps.io';
 var _bankTxs = [];
 var _bankPage = 1;
+var _bankCatFilter = null;
 var BANK_PAGE_SIZE = 25;
+
+var BANK_CATS = [
+  { label: 'Boodschappen',      emoji: '🛒', color: '#16a34a' },
+  { label: 'Restaurant',        emoji: '🍽️', color: '#ea580c' },
+  { label: 'Transport',         emoji: '🚗', color: '#2563eb' },
+  { label: 'Loon',              emoji: '💰', color: '#16a34a' },
+  { label: 'Huur',              emoji: '🏠', color: '#7c3aed' },
+  { label: 'Nutsvoorzieningen', emoji: '💡', color: '#d97706' },
+  { label: 'Abonnement',        emoji: '🔄', color: '#0891b2' },
+  { label: 'Kleding',           emoji: '👕', color: '#db2777' },
+  { label: 'Gezondheid',        emoji: '❤️', color: '#dc2626' },
+  { label: 'Vrije tijd',        emoji: '🎮', color: '#7c3aed' },
+  { label: 'Sparen',            emoji: '🏦', color: '#0d9488' },
+  { label: 'Overig',            emoji: '📦', color: '#64748b' },
+];
+
+function getCatMeta(label) {
+  if (!label) return null;
+  return BANK_CATS.find(function (c) { return c.label === label; }) || { label: label, emoji: '🏷️', color: '#64748b' };
+}
 
 // ── Token storage ─────────────────────────────────────────────────────────
 function getToken() {
@@ -42,7 +63,13 @@ function renderBankLogin() {
       '</div>' +
       '<p class="bank-login-title">Inloggen</p>' +
       '<p class="bank-login-sub">Voer je Prospero wachtwoord in</p>' +
-      '<input class="form-in" type="password" id="bank-pw" placeholder="Wachtwoord" autocomplete="current-password">' +
+      '<div class="pw-wrap">' +
+        '<input class="form-in" type="password" id="bank-pw" placeholder="Wachtwoord" autocomplete="current-password">' +
+        '<button class="pw-toggle" id="bank-pw-toggle" type="button" aria-label="Wachtwoord tonen">' +
+          '<svg class="pw-eye" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' +
+          '<svg class="pw-eye-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" hidden><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>' +
+        '</button>' +
+      '</div>' +
       '<button class="btn-primary bank-login-btn" id="bank-login-btn">Inloggen</button>' +
       '<p class="bank-login-err" id="bank-login-err" hidden></p>' +
     '</div>';
@@ -50,6 +77,13 @@ function renderBankLogin() {
   document.getElementById('bank-login-btn').addEventListener('click', doLogin);
   document.getElementById('bank-pw').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('bank-pw-toggle').addEventListener('click', function () {
+    var input = document.getElementById('bank-pw');
+    var isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    this.querySelector('.pw-eye').hidden = isHidden;
+    this.querySelector('.pw-eye-off').hidden = !isHidden;
   });
 }
 
@@ -106,6 +140,7 @@ async function renderBankMain() {
     '<div class="bank-filter">' +
       '<input class="search-in" type="search" id="bank-search" placeholder="Zoek transactie…" autocomplete="off">' +
     '</div>' +
+    '<div class="bank-cat-filter" id="bank-cat-filter"></div>' +
     '<div id="bank-tx-list"></div>' +
     '<div id="bank-load-more"></div>';
 
@@ -170,10 +205,32 @@ function setStatus(msg, isErr) {
 
 async function loadBankTxs() {
   var resp = await apiCall('GET', '/transactions');
-  if (!resp || !resp.ok) { _bankTxs = []; renderBankTxList(''); return; }
+  if (!resp || !resp.ok) { _bankTxs = []; renderBankCatFilter(); renderBankTxList(''); return; }
   var data = await resp.json();
   _bankTxs = data.transactions || [];
+  renderBankCatFilter();
   renderBankTxList(document.getElementById('bank-search') ? document.getElementById('bank-search').value : '');
+}
+
+function renderBankCatFilter() {
+  var el = document.getElementById('bank-cat-filter');
+  if (!el) return;
+  var usedCats = [...new Set(_bankTxs.map(function (t) { return t.category; }).filter(Boolean))];
+  if (!usedCats.length) { el.innerHTML = ''; return; }
+  var html = '<button class="bank-filter-chip' + (!_bankCatFilter ? ' active' : '') + '" data-cat="">Alle</button>';
+  usedCats.forEach(function (cat) {
+    var m = getCatMeta(cat);
+    html += '<button class="bank-filter-chip' + (_bankCatFilter === cat ? ' active' : '') + '" data-cat="' + esc(cat) + '" style="--chip-color:' + m.color + '">' + m.emoji + ' ' + esc(cat) + '</button>';
+  });
+  el.innerHTML = html;
+  el.querySelectorAll('.bank-filter-chip').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      _bankCatFilter = this.dataset.cat || null;
+      _bankPage = 1;
+      renderBankCatFilter();
+      renderBankTxList(document.getElementById('bank-search') ? document.getElementById('bank-search').value : '');
+    });
+  });
 }
 
 function renderBankTxList(search) {
@@ -181,7 +238,9 @@ function renderBankTxList(search) {
   if (!el) return;
   var q = (search || '').toLowerCase();
   var filtered = _bankTxs.filter(function (t) {
-    return !q || (t.description || '').toLowerCase().includes(q) || (t.category || '').toLowerCase().includes(q);
+    var matchSearch = !q || (t.description || '').toLowerCase().includes(q) || (t.category || '').toLowerCase().includes(q);
+    var matchCat = !_bankCatFilter || t.category === _bankCatFilter;
+    return matchSearch && matchCat;
   });
 
   if (!filtered.length) {
@@ -204,7 +263,11 @@ function renderBankTxList(search) {
       '<div class="tx-row bank-tx-row" data-id="' + t.id + '">' +
         '<div class="tx-info">' +
           '<span class="tx-desc">' + esc(t.description || '—') + '</span>' +
-          '<span class="tx-cat bank-cat-label" data-id="' + t.id + '">' + (t.category ? esc(t.category) : '<em>categorie instellen</em>') + '</span>' +
+          (function() {
+            if (!t.category) return '<span class="tx-cat bank-cat-label bank-cat-empty" data-id="' + t.id + '"><em>categorie instellen</em></span>';
+            var m = getCatMeta(t.category);
+            return '<span class="tx-cat bank-cat-label bank-cat-badge" data-id="' + t.id + '" style="--chip-color:' + m.color + '">' + m.emoji + ' ' + esc(t.category) + '</span>';
+          })() +
         '</div>' +
         '<span class="tx-amt ' + amtClass + '">' + amtSign + eur(Math.abs(t.amount)) + '</span>' +
       '</div>';
@@ -234,20 +297,33 @@ function renderBankTxList(search) {
 }
 
 function openCategoryPicker(txId, labelEl) {
-  var cats = ['Boodschappen', 'Restaurant', 'Transport', 'Loon', 'Huur', 'Nutsvoorzieningen',
-              'Abonnement', 'Kleding', 'Gezondheid', 'Vrije tijd', 'Sparen', 'Overig'];
+  var allCats = BANK_CATS.slice();
   if (typeof _userCats !== 'undefined') {
-    _userCats.forEach(function (c) { if (!cats.includes(c.label)) cats.push(c.label); });
+    _userCats.forEach(function (c) {
+      if (!allCats.find(function (x) { return x.label === c.label; })) {
+        allCats.push({ label: c.label, emoji: c.emoji || '🏷️', color: c.color || '#64748b' });
+      }
+    });
   }
+
+  var currentTx = _bankTxs.find(function (t) { return t.id === txId; });
+  var currentCat = currentTx ? currentTx.category : null;
 
   var html =
     '<p class="modal-title">Categorie instellen</p>' +
     '<div class="bank-cat-grid">';
-  cats.forEach(function (cat) {
-    html += '<button class="bank-cat-chip" data-cat="' + esc(cat) + '">' + esc(cat) + '</button>';
+  allCats.forEach(function (cat) {
+    var isActive = currentCat === cat.label;
+    html += '<button class="bank-cat-chip' + (isActive ? ' selected' : '') + '" data-cat="' + esc(cat.label) + '" style="--chip-color:' + cat.color + '">' +
+      cat.emoji + ' ' + esc(cat.label) +
+    '</button>';
   });
   html += '</div>' +
-    '<button class="btn-ghost" style="margin:12px 0 4px;width:100%" id="bank-cat-clear">Verwijder categorie</button>';
+    '<div class="bank-cat-custom">' +
+      '<input class="form-in" type="text" id="bank-cat-input" placeholder="Eigen categorie…" autocomplete="off">' +
+      '<button class="btn-primary" id="bank-cat-custom-btn">Toevoegen</button>' +
+    '</div>' +
+    '<button class="btn-ghost" style="margin:8px 0 4px;width:100%" id="bank-cat-clear">Verwijder categorie</button>';
 
   openModal(html);
 
@@ -256,6 +332,19 @@ function openCategoryPicker(txId, labelEl) {
       await setCategory(txId, this.dataset.cat, labelEl);
       closeModal();
     });
+  });
+  document.getElementById('bank-cat-custom-btn').addEventListener('click', async function () {
+    var val = document.getElementById('bank-cat-input').value.trim();
+    if (!val) return;
+    await setCategory(txId, val, labelEl);
+    closeModal();
+  });
+  document.getElementById('bank-cat-input').addEventListener('keydown', async function (e) {
+    if (e.key !== 'Enter') return;
+    var val = this.value.trim();
+    if (!val) return;
+    await setCategory(txId, val, labelEl);
+    closeModal();
   });
   document.getElementById('bank-cat-clear').addEventListener('click', async function () {
     await setCategory(txId, null, labelEl);
@@ -266,7 +355,19 @@ function openCategoryPicker(txId, labelEl) {
 async function setCategory(txId, cat, labelEl) {
   var resp = await apiCall('PATCH', '/transactions/' + txId + '/category', { category: cat });
   if (!resp || !resp.ok) return;
-  if (labelEl) labelEl.innerHTML = cat ? esc(cat) : '<em>categorie instellen</em>';
   var tx = _bankTxs.find(function (t) { return t.id === txId; });
   if (tx) tx.category = cat;
+  if (labelEl) {
+    if (!cat) {
+      labelEl.className = 'tx-cat bank-cat-label bank-cat-empty';
+      labelEl.innerHTML = '<em>categorie instellen</em>';
+      labelEl.removeAttribute('style');
+    } else {
+      var m = getCatMeta(cat);
+      labelEl.className = 'tx-cat bank-cat-label bank-cat-badge';
+      labelEl.style.setProperty('--chip-color', m.color);
+      labelEl.textContent = m.emoji + ' ' + cat;
+    }
+  }
+  renderBankCatFilter();
 }
