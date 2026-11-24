@@ -41,11 +41,18 @@ function txHTML(tx) {
   var amtClass = isIncome ? ' income' : (isTransfer ? ' transfer-amt' : '');
   var amtPrefix = isIncome ? '+' : (isTransfer ? '' : '');
 
+  var tagsHtml = (tx.tags && tx.tags.length)
+    ? '<div class="tx-tags">' + tx.tags.map(function (t) {
+        return '<span class="tx-tag">' + esc(t) + '</span>';
+      }).join('') + '</div>'
+    : '';
+
   return '<div class="tx" data-id="' + tx.id + '" role="button" tabindex="0">' +
     '<div class="tx-icon" style="background:' + c.color + '1a">' + c.emoji + '</div>' +
     '<div class="tx-info">' +
       '<div class="tx-desc">' + esc(tx.desc || c.label) + '</div>' +
       '<div class="tx-cat">' + c.label + '</div>' +
+      tagsHtml +
     '</div>' +
     '<div class="tx-amt' + amtClass + '">' + amtPrefix + eur(tx.amount) + '</div>' +
   '</div>';
@@ -204,7 +211,8 @@ function _renderTxList(txs, query) {
     filtered = txs.filter(function (t) {
       var descMatch = (t.desc || '').toLowerCase().indexOf(q) !== -1;
       var catLabel  = catById(t.cat || 'overig').label.toLowerCase();
-      return descMatch || catLabel.indexOf(q) !== -1;
+      var tagMatch  = (t.tags || []).some(function (tag) { return tag.toLowerCase().indexOf(q) !== -1; });
+      return descMatch || catLabel.indexOf(q) !== -1 || tagMatch;
     });
   }
 
