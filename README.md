@@ -186,6 +186,35 @@ Update-flow:
 
 ---
 
+## Beveiliging
+
+### Secrets
+| Waar | Wat | Hoe beveiligd |
+|---|---|---|
+| Azure Container App | JWT signing key | Azure secret — nooit in code of git |
+| Azure Container App | Wachtwoord hash (SHA-256) | Azure secret — nooit in code of git |
+| GitHub Actions | Azure credentials (Service Principal) | GitHub Secret |
+| GitHub Actions | Backend URL | GitHub Secret |
+
+- `appsettings.Production.json` en `appsettings.Local.json` staan in `.gitignore`
+- Geen enkel secret zit in de git-history
+
+### Authenticatie backend
+- Wachtwoord wordt vergeleken als SHA-256 hash met `FixedTimeEquals` (timing-safe)
+- Succesvolle login geeft een kortlevend JWT-token (60 minuten, HS256)
+- Bank API-calls verlopen altijd server-side — credentials komen nooit in de PWA terecht
+
+### Azure toegang
+- Service Principal `prospero-github` heeft enkel **Contributor** rechten op `prospero-rg`
+- Geen toegang tot andere resource groups of subscriptions
+- Budget alert op €1 met e-mailnotificatie
+
+### PWA
+- Alle data staat lokaal op het apparaat (IndexedDB) — geen account, geen cloud-sync
+- Service Worker serveert de app offline vanuit cache
+
+---
+
 ## Problemen oplossen
 
 **App toont oude versie:**  
