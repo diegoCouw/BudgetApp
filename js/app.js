@@ -25,6 +25,7 @@ async function render() {
   if      (activeV === 'home')         await renderHome();
   else if (activeV === 'transacties')  await renderTransacties();
   else if (activeV === 'statistieken') await renderStats();
+  checkNotifications();
 }
 
 // ── Theme ───────────────────────────────────────────────────────────────
@@ -181,6 +182,58 @@ async function checkRollover() {
 
     openRollover(surplus, prevYm);
   } catch (e) { console.warn('checkRollover:', e); }
+}
+
+// ── Notifications ────────────────────────────────────────────────────────
+async function checkNotifications() {
+  try {
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+
+    var stored  = JSON.parse(localStorage.getItem('budget_notif') || '{}');
+    var goals   = await getAllRecords('goals');
+    var active  = goals.filter(function (g) { return g.active; });
+    if (!active.length) return;
+
+    var today   = todayISO();
+    var curYm   = ymKey(curY, curM);
+    var txs     = await getTxsByYM(curY, curM);
+    var expenses = txs.filter(function (t) { return (t.type || 'expense') === 'expense'; });
+    var expTotal = expenses.reduce(function (s, t) { return s + t.amount; }, 0);
+
+    for (var i = 0; i < active.length; i++) {
+      var goal   = active[i];
+      var key    = 'g' + goal.id + '_' + curYm;
+      if (stored[key]) continue;
+
+      var spent = 0;
+      if (goal.type === 'category') {
+        spent = expenses.filter(function (t) { return t.cat === goal.catId; })
+                        .reduce(function (s, t) { return s + t.amount; }, 0);
+      } else if (goal.type === 'total') {
+        spent = expTotal;
+      } else if (goal.type === 'period' && goal.dateFrom && goal.dateTo) {
+        var rangeEnd = today > goal.dateTo ? goal.dateTo : today;
+        var rTxs = await getTxsByDateRange(goal.dateFrom, rangeEnd);
+        spent = rTxs.filter(function (t) { return (t.type || 'expense') === 'expense'; })
+                    .reduce(function (s, t) { return s + t.amount; }, 0);
+      } else { continue; }
+
+      var pct = goal.amount > 0 ? spent / goal.amount * 100 : 0;
+      if (pct < 80) continue;
+
+      stored[key] = true;
+      var title = pct >= 100 ? 'Budget overschreden!' : 'Budget bijna op (' + Math.round(pct) + '%)';
+      var body  = esc(goal.label) + ': ' + eur(spent) + ' van ' + eur(goal.amount);
+
+      if (swReg && swReg.showNotification) {
+        swReg.showNotification(title, { body: body, icon: '/BudgetApp/icons/icon-192.png', tag: key });
+      } else {
+        new Notification(title, { body: body, tag: key });
+      }
+    }
+    localStorage.setItem('budget_notif', JSON.stringify(stored));
+  } catch (e) { console.warn('checkNotifications:', e); }
 }
 
 // ── Recurring payments processor ────────────────────────────────────────

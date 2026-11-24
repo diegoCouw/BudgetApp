@@ -5,6 +5,13 @@ Formaat: `[versie] dag/maand/jaar uu:mm — beschrijving`
 
 ---
 
+## [feat/push-notifications] — 24/11/2026
+
+### ✨ Nieuw
+- **Meldingen** — schakel browser-notificaties in via Instellingen → Meldingen. Je ontvangt een melding zodra een budgetdoelstelling 80% (of meer) bereikt. Toestemming wordt gevraagd via een knop (vereist op iOS). Meldingen worden eenmalig per doelstelling per maand gestuurd. Op ondersteunde browsers (iOS PWA geïnstalleerd op beginscherm, Chrome, Firefox) werkt dit ook via de service worker.
+
+---
+
 ## [feat/split-transaction] — 24/11/2026
 
 ### ✨ Nieuw
