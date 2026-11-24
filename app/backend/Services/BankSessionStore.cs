@@ -1,35 +1,33 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Prospero.Api.Data;
 using Prospero.Api.Models;
 
 namespace Prospero.Api.Services;
 
-// Bewaart de Enable Banking session op schijf zodat dagelijkse pulls werken na een cold start.
-// Bij container herstart wordt de sessie herladen uit het bestand.
-public class BankSessionStore
+public class BankSessionStore(IServiceScopeFactory scopeFactory)
 {
-    private readonly string _path = "/tmp/bank-session.json";
-    private BankSession? _cached;
-
     public BankSession? Get()
     {
-        if (_cached is not null) return _cached;
-        if (!File.Exists(_path)) return null;
-
-        try
-        {
-            var json = File.ReadAllText(_path);
-            _cached = JsonSerializer.Deserialize<BankSession>(json);
-            return _cached;
-        }
-        catch
-        {
-            return null;
-        }
+        using var scope = scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var entity = db.BankSessions.OrderByDescending(s => s.CreatedAt).FirstOrDefault();
+        if (entity is null) return null;
+        var accountIds = JsonSerializer.Deserialize<List<string>>(entity.AccountIdsJson) ?? [];
+        return new BankSession(entity.SessionId, accountIds, entity.ExpiresAt);
     }
 
     public void Save(BankSession session)
     {
-        _cached = session;
-        File.WriteAllText(_path, JsonSerializer.Serialize(session));
+        using var scope = scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.BankSessions.Add(new BankSessionEntity
+        {
+            SessionId = session.SessionId,
+            AccountIdsJson = JsonSerializer.Serialize(session.AccountIds),
+            ExpiresAt = session.ExpiresAt,
+            CreatedAt = DateTime.UtcNow
+        });
+        db.SaveChanges();
     }
 }

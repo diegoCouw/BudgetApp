@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Prospero.Api;
+using Prospero.Api.Data;
 using Prospero.Api.Services;
 using Prospero.Api.Models;
 using System.Text;
@@ -28,6 +30,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+// ── Database ──────────────────────────────────────────────────────────────
+var connStr = builder.Configuration.GetConnectionString("Neon")
+    ?? throw new InvalidOperationException("ConnectionStrings:Neon ontbreekt in configuratie");
+builder.Services.AddDbContext<AppDbContext>(opt => opt.UseNpgsql(connStr));
+
 // ── Services ──────────────────────────────────────────────────────────────
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddSingleton<BankSessionStore>();
@@ -53,6 +60,13 @@ var app = builder.Build();
 
 // HTTPS wordt afgehandeld door Azure Container Apps — niet door de container zelf
 // app.UseHttpsRedirection();
+
+// Auto-migreer database bij opstarten
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+}
 
 app.UseExceptionHandler(err => err.Run(async ctx =>
 {

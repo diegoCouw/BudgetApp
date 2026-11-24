@@ -62,6 +62,7 @@ jobs:
               Auth__PasswordHash=secretref:auth-password-hash \
               EnableBanking__AppId=secretref:enablebanking-app-id \
               EnableBanking__PrivateKeyBase64=secretref:enablebanking-private-key \
+              ConnectionStrings__Neon=secretref:neon-connection-string \
               ASPNETCORE_ENVIRONMENT=Production
 
       - name: Smoke test
