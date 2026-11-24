@@ -39,7 +39,7 @@ jobs:
 
       - name: Versie instellen op datum + uur (CET/CEST)
         run: |
-          VERSION=$(TZ="Europe/Brussels" python3 -c "from datetime import datetime; d=datetime.now(); print(str(d.year)+'.'+str(d.month)+'.'+str(d.day)+'.'+str(d.hour))")
+          VERSION=$(TZ="Europe/Brussels" python3 -c "from datetime import datetime; d=datetime.now(); print(str(d.year)+'.'+str(d.month)+'.'+str(d.day)+'.'+str(d.hour)+'.'+str(d.minute))")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           sed -i "s/var APP_VERSION = '.*';/var APP_VERSION = '$VERSION';/" js/version.js
           sed -i "s/const CACHE = '.*';/const CACHE = 'budget-$VERSION';/" sw.js
