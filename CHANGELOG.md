@@ -5,6 +5,13 @@ Formaat: `[versie] dag/maand/jaar uu:mm — beschrijving`
 
 ---
 
+## [feat/tags] — 24/11/2026
+
+### ✨ Nieuw
+- **Tags** — voeg vrije tekst-labels toe aan transacties (kommagescheiden). Tags zijn zichtbaar als chips in de transactielijst en worden meegenomen in de zoekfunctie. Tags kunnen ook bewerkt worden via "Bewerken".
+
+---
+
 ## [feat/csv-export] — 24/11/2026
 
 ### ✨ Nieuw

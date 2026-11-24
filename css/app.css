@@ -458,6 +458,13 @@ body::before {
 }
 .date-filter-sep { color: var(--muted); font-size: 13px; text-align: center; }
 
+/* ── Tags ── */
+.tx-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.tx-tag {
+  font-size: 11px; padding: 1px 7px; border-radius: 20px;
+  background: var(--accent)22; color: var(--accent); font-weight: 500;
+}
+
 /* ── Search bar ── */
 .search-wrap {
   position: relative; margin-bottom: 16px;

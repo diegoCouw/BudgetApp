@@ -132,6 +132,9 @@ function openAdd() {
         }
       }
 
+      var tagsRaw = document.getElementById('tags-in') ? document.getElementById('tags-in').value : '';
+      var tags    = tagsRaw.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+
       var parts = date.split('-').map(Number);
       var y = parts[0], m = parts[1];
 
@@ -143,6 +146,7 @@ function openAdd() {
         desc:   desc,
         ts:     Date.now(),
         type:   txType,
+        tags:   tags,
       });
 
       closeModal();
@@ -161,8 +165,9 @@ function openAdd() {
   showModal();
 }
 
-function _buildTxForm(isExpense, catBtns, savedAmt, savedDate, savedDesc) {
+function _buildTxForm(isExpense, catBtns, savedAmt, savedDate, savedDesc, savedTags) {
   var placeholder = isExpense ? 'Bijv. Albert Heijn' : 'Bijv. Loon';
+  var tagsVal = savedTags && savedTags.length ? savedTags.join(', ') : '';
   return '<div class="amt-wrap" id="amtwrap">' +
       '<span class="amt-sign">€</span>' +
       '<input id="amt-in" type="number" inputmode="decimal" placeholder="0,00" step="0.01" min="0" value="' + savedAmt + '">' +
@@ -175,6 +180,10 @@ function _buildTxForm(isExpense, catBtns, savedAmt, savedDate, savedDesc) {
     '<div class="field">' +
       '<div class="field-lbl">' + (isExpense ? 'Omschrijving' : 'Bron') + ' (optioneel)</div>' +
       '<input class="form-in" type="text" id="desc-in" placeholder="' + placeholder + '" maxlength="80" value="' + esc(savedDesc) + '">' +
+    '</div>' +
+    '<div class="field">' +
+      '<div class="field-lbl">Tags (optioneel, kommagescheiden)</div>' +
+      '<input class="form-in" type="text" id="tags-in" placeholder="Bijv. vakantie, werk" maxlength="120" value="' + esc(tagsVal) + '">' +
     '</div>';
 }
 
@@ -416,6 +425,9 @@ function openEdit(tx) {
       '<div class="field"><div class="field-lbl">Omschrijving (optioneel)</div>' +
         '<input class="form-in" type="text" id="desc-in" placeholder="Bijv. Albert Heijn" maxlength="80" value="' + esc(tx.desc || '') + '">' +
       '</div>' +
+      '<div class="field"><div class="field-lbl">Tags (optioneel, kommagescheiden)</div>' +
+        '<input class="form-in" type="text" id="tags-in" placeholder="Bijv. vakantie, werk" maxlength="120" value="' + esc((tx.tags || []).join(', ')) + '">' +
+      '</div>' +
       '<button class="btn-primary" id="save-edit-btn">Bewerken</button>';
 
     document.getElementById('mcontent').innerHTML = html;
@@ -431,10 +443,12 @@ function openEdit(tx) {
     }
 
     document.getElementById('save-edit-btn').addEventListener('click', function () {
-      var amount = parseFloat(document.getElementById('amt-in').value.replace(',', '.'));
-      var date   = document.getElementById('date-in').value;
-      var desc   = (document.getElementById('desc-in') || {}).value || '';
+      var amount   = parseFloat(document.getElementById('amt-in').value.replace(',', '.'));
+      var date     = document.getElementById('date-in').value;
+      var desc     = (document.getElementById('desc-in') || {}).value || '';
       desc = desc.trim ? desc.trim() : desc;
+      var tagsRaw2 = document.getElementById('tags-in') ? document.getElementById('tags-in').value : '';
+      var tags2    = tagsRaw2.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
 
       if (!amount || amount <= 0) {
         document.getElementById('amtwrap').style.borderColor = 'var(--danger)';
@@ -451,6 +465,7 @@ function openEdit(tx) {
         desc:   desc,
         ts:     tx.ts,
         type:   tx.type || 'expense',
+        tags:   tags2,
       });
     });
   }
