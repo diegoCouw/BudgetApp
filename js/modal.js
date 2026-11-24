@@ -1306,3 +1306,55 @@ function openAddRecurring() {
 function _backBtn(target) {
   return '<button class="btn-ghost" id="back-btn" style="width:auto;padding:8px 14px;margin:0 0 16px;">← Terug</button>';
 }
+
+// ── Swipe-to-dismiss ──────────────────────────────────────────────────────────
+(function () {
+  var startY = 0;
+  var startScroll = 0;
+  var active = false;
+
+  function getEls() {
+    return {
+      sh: document.getElementById('msheet'),
+      ov: document.getElementById('moverlay')
+    };
+  }
+
+  document.addEventListener('touchstart', function (e) {
+    var els = getEls();
+    if (!els.sh || !els.ov || els.ov.hidden) return;
+    if (!els.sh.contains(e.target)) return;
+    startY = e.touches[0].clientY;
+    startScroll = els.sh.scrollTop;
+    active = true;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', function (e) {
+    if (!active) return;
+    var els = getEls();
+    if (!els.sh || !els.ov) return;
+    var dy = e.touches[0].clientY - startY;
+    if (dy > 0 && startScroll === 0) {
+      els.sh.style.transition = 'none';
+      els.sh.style.transform  = 'translateY(' + dy + 'px)';
+      els.ov.style.transition = 'none';
+      els.ov.style.opacity    = String(Math.max(0, 1 - dy / 300));
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', function (e) {
+    if (!active) return;
+    active = false;
+    var els = getEls();
+    if (!els.sh || !els.ov) return;
+    var dy = e.changedTouches[0].clientY - startY;
+    if (dy > 100 && startScroll === 0) {
+      closeModal();
+    } else {
+      els.sh.style.transition = 'transform .3s cubic-bezier(.32,.72,0,1)';
+      els.sh.style.transform  = 'translateY(0)';
+      els.ov.style.transition = 'opacity .25s';
+      els.ov.style.opacity    = '1';
+    }
+  }, { passive: true });
+})();
