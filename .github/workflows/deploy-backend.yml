@@ -47,8 +47,8 @@ jobs:
       - name: Deploy naar Azure Container Apps
         run: |
           az containerapp update \
-            --name ${{ secrets.AZURE_CONTAINERAPP_NAME }} \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name prospero-api \
+            --resource-group prospero-rg \
             --image ghcr.io/${{ env.OWNER }}/prospero-api:latest \
             --set-env-vars \
               Jwt__Key=secretref:jwt-key \
