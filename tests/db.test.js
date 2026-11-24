@@ -4,10 +4,10 @@
 require('fake-indexeddb/auto');
 
 // db.js calls ymKey() as a global — provide it from format.js
-const fmt = require('../js/format.js');
+const fmt = require('../pwa/js/format.js');
 global.ymKey = fmt.ymKey;
 
-const db = require('../js/db.js');
+const db = require('../pwa/js/db.js');
 
 beforeAll(async () => {
   await db.openDB();

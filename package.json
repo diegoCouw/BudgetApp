@@ -6,9 +6,10 @@
     "coverage": "jest --forceExit --coverage"
   },
   "jest": {
+    "testPathIgnorePatterns": ["/node_modules/", "/app/"],
     "collectCoverageFrom": [
-      "js/format.js",
-      "js/db.js"
+      "pwa/js/format.js",
+      "pwa/js/db.js"
     ]
   },
   "devDependencies": {
