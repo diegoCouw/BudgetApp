@@ -195,29 +195,28 @@ async function renderHome() {
   }
 }
 
-async function renderTransacties() {
-  document.getElementById('t-mlabel').textContent = MNL[curM] + ' ' + curY;
+function _renderTxList(txs, query) {
+  var listEl = document.getElementById('t-list');
+  var filtered = txs;
 
-  var txs;
-  var usingFilter = curDateFrom && curDateTo;
-
-  if (usingFilter) {
-    txs = await getTxsByDateRange(curDateFrom, curDateTo);
-    document.getElementById('t-mlabel').textContent = curDateFrom + ' t/m ' + curDateTo;
-  } else {
-    txs = await getTxsByYM(curY, curM);
+  if (query && query.trim()) {
+    var q = query.trim().toLowerCase();
+    filtered = txs.filter(function (t) {
+      var descMatch = (t.desc || '').toLowerCase().indexOf(q) !== -1;
+      var catLabel  = catById(t.cat || 'overig').label.toLowerCase();
+      return descMatch || catLabel.indexOf(q) !== -1;
+    });
   }
 
-  var listEl = document.getElementById('t-list');
-
-  if (!txs.length) {
+  if (!filtered.length) {
     listEl.innerHTML = '<div class="empty"><div class="empty-icon">🧾</div>' +
-      '<h3>Geen transacties</h3><p>Tik op + om een transactie toe te voegen.</p></div>';
+      '<h3>' + (query && query.trim() ? 'Geen resultaten' : 'Geen transacties') + '</h3>' +
+      '<p>' + (query && query.trim() ? 'Probeer een andere zoekterm.' : 'Tik op + om een transactie toe te voegen.') + '</p></div>';
     return;
   }
 
   var groups = {};
-  txs.forEach(function (t) {
+  filtered.forEach(function (t) {
     if (!groups[t.date]) groups[t.date] = [];
     groups[t.date].push(t);
   });
@@ -236,7 +235,28 @@ async function renderTransacties() {
     '</div>';
   }).join('');
 
-  bindTxClicks(listEl, txs);
+  bindTxClicks(listEl, filtered);
+}
+
+async function renderTransacties() {
+  document.getElementById('t-mlabel').textContent = MNL[curM] + ' ' + curY;
+
+  var txs;
+  var usingFilter = curDateFrom && curDateTo;
+
+  if (usingFilter) {
+    txs = await getTxsByDateRange(curDateFrom, curDateTo);
+    document.getElementById('t-mlabel').textContent = curDateFrom + ' t/m ' + curDateTo;
+  } else {
+    txs = await getTxsByYM(curY, curM);
+  }
+
+  var searchEl = document.getElementById('t-search');
+  _renderTxList(txs, searchEl ? searchEl.value : '');
+
+  if (searchEl) {
+    searchEl.oninput = function () { _renderTxList(txs, this.value); };
+  }
 }
 
 async function renderStats() {
