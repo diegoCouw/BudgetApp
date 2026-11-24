@@ -4,6 +4,30 @@ Alle wijzigingen per versie of feature, nieuwste bovenaan.
 
 ---
 
+## [develop] — 24/11/2026 — Database & transacties opslaan
+
+### 🗄️ Neon PostgreSQL database
+- **Neon.tech** gekozen als gratis PostgreSQL-provider (0.5 GB, forever free, EU Central)
+- Entity Framework Core + Npgsql toegevoegd aan backend
+- Twee tabellen: `Transactions` (bankbetalingen) en `BankSessions` (OAuth2 sessies)
+- Auto-migrate bij opstarten (`db.Database.Migrate()`)
+- Connection string opgeslagen als Azure secret `neon-connection-string`
+- Directe endpoint (zonder pooler) vereist voor EF Core DDL-compatibiliteit
+
+### 🏦 Bank sync → database
+- `/bank/sync` slaat transacties op in Neon, overslaat duplicaten (op `ExternalId`)
+- `GET /transactions` endpoint: geeft opgeslagen transacties terug met datum/categorie filter
+- `PATCH /transactions/{id}/category` endpoint: stelt categorie in op een transactie
+- `BankSessionStore` persisteert nu sessies in database (overleeft container-herstarts)
+
+### 🔧 Enable Banking fixes
+- ASPSP-naam configureerbaar via `EnableBanking:AspspName` in appsettings
+- Sandbox gebruikt `BBVA` (BNP Fortis staat niet in sandbox) — voor productie instellen via Azure env var
+- Amount-parsing fix: sandbox stuurt bedragen als string, productie als number
+- Sandbox testcredentials: username `user1`, wachtwoord `1234`, OTP `012345`
+
+---
+
 ## [develop] — 24/11/2026 — Bank API integratie
 
 ### 🏦 Enable Banking (in ontwikkeling)

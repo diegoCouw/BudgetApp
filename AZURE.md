@@ -32,8 +32,40 @@ Verwijder enkel deze groep om alles in één keer op te ruimen.
 | `auth-password-hash` | SHA-256 hash van het inlogwachtwoord |
 | `enablebanking-private-key` | RSA private key (base64-encoded) voor Enable Banking API |
 | `enablebanking-app-id` | Application ID van de Prospero sandbox app op enablebanking.com |
+| `neon-connection-string` | PostgreSQL connection string voor Neon.tech database |
 
 Secrets zijn enkel zichtbaar via de Azure portal (niet in logs, niet in code).
+
+> **Let op**: gebruik de **directe** Neon endpoint (zonder `-pooler`) voor de connection string. De pooler-variant blokkeert DDL-statements (CREATE TABLE) die EF Core migrations nodig heeft.
+
+---
+
+## Neon PostgreSQL database
+
+Transacties en bank-sessies worden opgeslagen in [Neon.tech](https://neon.tech) (gratis forever tier).
+
+| Instelling | Waarde |
+|---|---|
+| Project | `prospero` |
+| Database | `neondb` |
+| Branch | `production` (default) |
+| Regio | EU Central (Frankfurt) |
+| Endpoint | Direct (geen pooler) — vereist voor EF Core migrations |
+
+### Connection string instellen
+
+```powershell
+az containerapp secret set `
+  --name prospero-api `
+  --resource-group prospero-rg `
+  --secrets "neon-connection-string=Host=ENDPOINT;Database=neondb;Username=neondb_owner;Password=WACHTWOORD;SSL Mode=Require"
+```
+
+Haal de endpoint en het wachtwoord op via het Neon dashboard → **Connection Details** (pooler uitgeschakeld).
+
+### Wachtwoord resetten
+
+Via het Neon dashboard → **Settings** → **Reset password**. Vergeet daarna het Azure secret bij te werken.
 
 ---
 

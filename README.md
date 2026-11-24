@@ -91,11 +91,27 @@ Zie [AZURE.md](AZURE.md) voor de volledige setup en kostenoverzicht.
 |---|---|---|
 | `GET /health` | Nee | Health check + versie |
 | `POST /auth/login` | Nee | Wachtwoord → JWT token |
-| `POST /bank/connect` | JWT | Start Enable Banking consent flow → redirect-URL naar BNP Fortis |
+| `POST /bank/connect` | JWT | Start Enable Banking consent flow → redirect-URL naar bank |
 | `GET /bank/callback` | Nee | Ontvangt OAuth2 code → wisselt in voor session, slaat accounts op |
-| `GET /bank/sync` | JWT | Haalt nieuwe transacties op (dagelijkse pull) |
+| `GET /bank/sync` | JWT | Haalt nieuwe transacties op en slaat ze op in database |
+| `GET /transactions` | JWT | Geeft opgeslagen transacties terug (filter: `from`, `to`, `category`) |
+| `PATCH /transactions/{id}/category` | JWT | Stelt categorie in op een transactie |
 
-Secrets (JWT key, wachtwoord hash, Enable Banking private key) staan uitsluitend als Azure Container App secrets — nooit in code of git.
+Secrets (JWT key, wachtwoord hash, Enable Banking private key, Neon connection string) staan uitsluitend als Azure Container App secrets — nooit in code of git.
+
+---
+
+## Database
+
+Transacties en bank-sessies worden opgeslagen in **Neon.tech** (gratis PostgreSQL, EU West).
+
+| Tabel | Beschrijving |
+|---|---|
+| `Transactions` | Bankbetalingen — id, bedrag, datum, omschrijving, categorie |
+| `BankSessions` | Enable Banking OAuth2 sessie — geldig 90 dagen |
+
+De database wordt automatisch gemigreerd bij elke deploy (`db.Database.Migrate()`).  
+Verbinding via directe Neon endpoint (geen pooler) voor compatibiliteit met EF Core migrations.
 
 ---
 
@@ -198,6 +214,7 @@ Update-flow:
 | Azure Container App | Wachtwoord hash (SHA-256) | Azure secret — nooit in code of git |
 | Azure Container App | Enable Banking private key (RSA, base64) | Azure secret — nooit in code of git |
 | Azure Container App | Enable Banking application ID | Azure secret — nooit in code of git |
+| Azure Container App | Neon PostgreSQL connection string | Azure secret — nooit in code of git |
 | GitHub Actions | Azure credentials (Service Principal) | GitHub Secret |
 | GitHub Actions | Backend URL | GitHub Secret |
 
