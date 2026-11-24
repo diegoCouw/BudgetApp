@@ -3,9 +3,6 @@ name: CI / Deploy
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - 'js/version.js'
-      - 'sw.js'
   pull_request:
     branches: [main]
 
@@ -33,7 +30,7 @@ jobs:
     name: Versie bijwerken
     runs-on: ubuntu-latest
     needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && !startsWith(github.event.head_commit.message, 'chore: versie bijgewerkt')
     permissions:
       contents: write
 
