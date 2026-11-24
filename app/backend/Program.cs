@@ -46,9 +46,10 @@ builder.Services.AddCors(options =>
     options.AddPolicy("frontend", policy =>
     {
         policy.WithOrigins(
-                "http://localhost:4200",   // Angular dev
-                "capacitor://localhost",   // Capacitor iOS
-                "http://localhost")        // Capacitor Android
+                "https://diegocouw.github.io", // PWA GitHub Pages
+                "http://localhost:4200",        // Angular dev
+                "capacitor://localhost",        // Capacitor iOS
+                "http://localhost")             // Capacitor Android
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
