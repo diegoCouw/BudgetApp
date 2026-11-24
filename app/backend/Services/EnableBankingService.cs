@@ -57,11 +57,15 @@ public class EnableBankingService(IConfiguration config, HttpClient http)
     // Stap 1: start consent flow — geeft redirect-URL naar de bank terug
     public async Task<string> StartConsentAsync(string redirectUrl)
     {
+        var aspspName = config["EnableBanking:AspspName"]
+            ?? throw new InvalidOperationException("EnableBanking:AspspName ontbreekt");
+        var aspspCountry = config["EnableBanking:AspspCountry"] ?? "BE";
+
         var validUntil = DateTime.UtcNow.AddDays(89).ToString("yyyy-MM-ddTHH:mm:ssZ");
         var body = new
         {
             access = new { valid_until = validUntil },
-            aspsp = new { name = "BNP Paribas Fortis", country = "BE" },
+            aspsp = new { name = aspspName, country = aspspCountry },
             state = Guid.NewGuid().ToString(),
             redirect_url = redirectUrl,
             psu_type = "personal"
@@ -91,13 +95,6 @@ public class EnableBankingService(IConfiguration config, HttpClient http)
             .ToList();
 
         return new BankSession(sessionId, accountIds, DateTime.UtcNow.AddDays(89));
-    }
-
-    // Debug: haal ASPSP-lijst op voor een land
-    public async Task<string> GetAspspsRawAsync(string country)
-    {
-        var resp = await http.SendAsync(BuildRequest(HttpMethod.Get, $"/aspsps?country={country}"));
-        return await resp.Content.ReadAsStringAsync();
     }
 
     // Dagelijkse pull: haal transacties op voor één rekening

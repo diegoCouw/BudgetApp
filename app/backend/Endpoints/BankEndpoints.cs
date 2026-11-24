@@ -24,15 +24,6 @@ public static class BankEndpoints
         .RequireAuthorization()
         .WithName("BankConnect");
 
-        // Debug: ASPSP-lijst ophalen (tijdelijk)
-        app.MapGet("/bank/aspsps", async (string country, EnableBankingService bank) =>
-        {
-            var raw = await bank.GetAspspsRawAsync(country);
-            return Results.Content(raw, "application/json");
-        })
-        .RequireAuthorization()
-        .WithName("BankAspsps");
-
         // OAuth2 callback — ontvangt code van bank, slaat session op
         app.MapGet("/bank/callback", async (string code, EnableBankingService bank, BankSessionStore store) =>
         {
