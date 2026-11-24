@@ -155,6 +155,34 @@ function wire() {
   });
 }
 
+// ── Rollover checker ────────────────────────────────────────────────────
+async function checkRollover() {
+  try {
+    var stored  = JSON.parse(localStorage.getItem('budget_rollover') || '{}');
+    var today   = new Date();
+    var prevM   = today.getMonth() === 0 ? 11 : today.getMonth() - 1;
+    var prevY   = today.getMonth() === 0 ? today.getFullYear() - 1 : today.getFullYear();
+    var prevYm  = ymKey(prevY, prevM);
+    if (stored[prevYm]) return;
+
+    var allTx   = await getAllTxs();
+    var monthTx = allTx.filter(function (t) { return t.ym === prevYm; });
+    var income  = monthTx.filter(function (t) { return t.type === 'income'; })
+                         .reduce(function (s, t) { return s + t.amount; }, 0);
+    var expense = monthTx.filter(function (t) { return (t.type || 'expense') === 'expense'; })
+                         .reduce(function (s, t) { return s + t.amount; }, 0);
+    var surplus = Math.round((income - expense) * 100) / 100;
+
+    if (surplus <= 0) {
+      stored[prevYm] = 'no_surplus';
+      localStorage.setItem('budget_rollover', JSON.stringify(stored));
+      return;
+    }
+
+    openRollover(surplus, prevYm);
+  } catch (e) { console.warn('checkRollover:', e); }
+}
+
 // ── Recurring payments processor ────────────────────────────────────────
 async function processRecurring() {
   try {
@@ -201,5 +229,6 @@ async function processRecurring() {
   await processRecurring();
   wire();
   await render();
+  await checkRollover();
   registerSW(); // non-blocking
 })();

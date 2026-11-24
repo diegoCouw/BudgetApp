@@ -111,6 +111,27 @@ function openAdd() {
       }
       if (!date) return;
 
+      // Guard: zichtrekening cannot go negative on expense
+      if ((txType || 'expense') === 'expense' && typeof _accounts !== 'undefined') {
+        var allTx2  = await getAllTxs();
+        var zicht   = _accounts.find(function (a) { return a.type === 'zicht'; });
+        if (zicht) {
+          var curBal = _calcAccountBalance(zicht, allTx2);
+          if (curBal - amount < 0) {
+            document.getElementById('amtwrap').style.borderColor = 'var(--danger)';
+            var errEl = document.getElementById('bal-err');
+            if (!errEl) {
+              errEl = document.createElement('div');
+              errEl.id = 'bal-err';
+              errEl.style.cssText = 'color:var(--danger);font-size:13px;margin-top:6px;text-align:center;';
+              document.getElementById('amtwrap').insertAdjacentElement('afterend', errEl);
+            }
+            errEl.textContent = 'Onvoldoende saldo (beschikbaar: ' + eur(curBal) + ')';
+            return;
+          }
+        }
+      }
+
       var parts = date.split('-').map(Number);
       var y = parts[0], m = parts[1];
 
@@ -220,6 +241,27 @@ async function _saveTransfer() {
     amtEl.focus(); return;
   }
   if (!date || fromId === toId) return;
+
+  // Guard: source account cannot go negative on transfer
+  if (typeof _accounts !== 'undefined') {
+    var allTxT   = await getAllTxs();
+    var fromAccT = _accounts.find(function (a) { return a.id === fromId; });
+    if (fromAccT) {
+      var fromBal = _calcAccountBalance(fromAccT, allTxT);
+      if (fromBal - amount < 0) {
+        document.getElementById('amtwrap').style.borderColor = 'var(--danger)';
+        var tErrEl = document.getElementById('bal-err');
+        if (!tErrEl) {
+          tErrEl = document.createElement('div');
+          tErrEl.id = 'bal-err';
+          tErrEl.style.cssText = 'color:var(--danger);font-size:13px;margin-top:6px;text-align:center;';
+          document.getElementById('amtwrap').insertAdjacentElement('afterend', tErrEl);
+        }
+        tErrEl.textContent = 'Onvoldoende saldo op bronrekening (beschikbaar: ' + eur(fromBal) + ')';
+        return;
+      }
+    }
+  }
 
   var parts = date.split('-').map(Number);
   var y = parts[0], m = parts[1];
@@ -414,6 +456,90 @@ function openEdit(tx) {
   }
 
   buildEditForm(false, null);
+  showModal();
+}
+
+// ── Rollover dialog ───────────────────────────────────────────────────────────
+function openRollover(surplus, prevYm, onDone) {
+  var spaarAccs = (typeof _accounts !== 'undefined' ? _accounts : [])
+    .filter(function (a) { return a.type === 'spaar'; });
+
+  function markDone(action) {
+    try {
+      var stored = JSON.parse(localStorage.getItem('budget_rollover') || '{}');
+      stored[prevYm] = action;
+      localStorage.setItem('budget_rollover', JSON.stringify(stored));
+    } catch (e) {}
+    closeModal();
+    if (typeof onDone === 'function') onDone();
+  }
+
+  function buildMain() {
+    var mnlName = prevYm.split('-');
+    var label   = mnlName[1] ? (MNL[Number(mnlName[1]) - 1] || prevYm) + ' ' + mnlName[0] : prevYm;
+
+    var spaarHtml = spaarAccs.length
+      ? spaarAccs.map(function (a) {
+          return '<button class="btn-ghost rollover-spaar" data-id="' + a.id +
+            '" style="margin-top:8px;">' + esc(a.name) + '</button>';
+        }).join('')
+      : '<div style="color:var(--muted);font-size:13px;margin-top:4px;">Geen spaarrekeningen aangemaakt.</div>';
+
+    document.getElementById('mcontent').innerHTML =
+      '<h2 class="mtitle">Maandoverschot ' + esc(label) + '</h2>' +
+      '<div style="text-align:center;font-size:28px;font-weight:700;color:var(--accent);margin:8px 0 20px;">' + eur(surplus) + '</div>' +
+      '<p style="font-size:14px;color:var(--muted);margin:0 0 16px;">Je had vorige maand een overschot. Wat wil je hiermee doen?</p>' +
+      '<button class="btn-primary" id="rollover-carry">Meenemen naar deze maand</button>' +
+      '<div style="margin:12px 0 4px;font-size:13px;font-weight:600;color:var(--muted);">Naar spaarrekening</div>' +
+      spaarHtml +
+      '<button class="btn-ghost" id="rollover-ignore" style="margin-top:16px;color:var(--muted);">Negeren</button>';
+
+    document.getElementById('rollover-carry').addEventListener('click', async function () {
+      var today   = todayISO();
+      var parts   = today.split('-').map(Number);
+      await addTx({
+        amount: Math.round(surplus * 100) / 100,
+        cat:    'inkomst',
+        date:   today,
+        ym:     ymKey(parts[0], parts[1] - 1),
+        desc:   'Overschot ' + prevYm,
+        ts:     Date.now(),
+        type:   'income',
+      });
+      markDone('carry');
+      await render();
+    });
+
+    document.getElementById('rollover-ignore').addEventListener('click', function () {
+      markDone('ignore');
+    });
+
+    document.querySelectorAll('.rollover-spaar').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        var toId   = Number(this.dataset.id);
+        var zicht  = (typeof _accounts !== 'undefined' ? _accounts : [])
+          .find(function (a) { return a.type === 'zicht'; });
+        if (!zicht) { markDone('ignore'); return; }
+        var today  = todayISO();
+        var parts  = today.split('-').map(Number);
+        await addTx({
+          amount: Math.round(surplus * 100) / 100,
+          cat:    'transfer',
+          date:   today,
+          ym:     ymKey(parts[0], parts[1] - 1),
+          desc:   'Overschot ' + prevYm,
+          ts:     Date.now(),
+          type:   'transfer',
+          fromAccountId: zicht.id,
+          toAccountId:   toId,
+        });
+        markDone('spaar_' + toId);
+        await render();
+      });
+    });
+  }
+
+  buildMain();
   showModal();
 }
 
@@ -775,8 +901,25 @@ function openAccountsSettings() {
     document.getElementById('back-btn').addEventListener('click', openSettings);
     document.querySelectorAll('.del-acc').forEach(function (btn) {
       btn.addEventListener('click', async function () {
-        await delRecord('accounts', Number(this.dataset.id));
-        _accounts = _accounts.filter(function (a) { return a.id !== Number(btn.dataset.id); });
+        var accId = Number(this.dataset.id);
+        var acc   = _accounts.find(function (a) { return a.id === accId; });
+        if (acc) {
+          var allTx = await getAllTxs();
+          var bal   = _calcAccountBalance(acc, allTx);
+          if (bal > 0) {
+            var row = this.closest('.settings-item');
+            if (row && !row.querySelector('.acc-err')) {
+              var err = document.createElement('div');
+              err.className = 'acc-err';
+              err.style.cssText = 'color:var(--danger);font-size:12px;margin-top:4px;';
+              err.textContent = 'Verplaats eerst het saldo (' + eur(bal) + ') voor je deze rekening verwijdert.';
+              row.appendChild(err);
+            }
+            return;
+          }
+        }
+        await delRecord('accounts', accId);
+        _accounts = _accounts.filter(function (a) { return a.id !== accId; });
         refresh();
       });
     });
