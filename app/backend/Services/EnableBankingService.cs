@@ -110,7 +110,10 @@ public class EnableBankingService(IConfiguration config, HttpClient http)
         foreach (var t in json["transactions"]?.AsArray() ?? [])
         {
             if (t is null) continue;
-            var amount = t["transaction_amount"]?["amount"]?.GetValue<decimal>() ?? 0;
+            var amountNode = t["transaction_amount"]?["amount"];
+            var amount = amountNode?.GetValueKind() == System.Text.Json.JsonValueKind.String
+                ? decimal.Parse(amountNode.GetValue<string>(), System.Globalization.CultureInfo.InvariantCulture)
+                : amountNode?.GetValue<decimal>() ?? 0;
             var currency = t["transaction_amount"]?["currency"]?.GetValue<string>() ?? "EUR";
             var direction = t["credit_debit_indicator"]?.GetValue<string>() ?? "DBIT";
             var date = t["booking_date"]?.GetValue<string>() ?? to.ToString("yyyy-MM-dd");
