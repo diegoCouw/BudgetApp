@@ -29,12 +29,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Image tag instellen (git SHA)
+        run: echo "IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
+
       - name: Build en push Docker image
         uses: docker/build-push-action@v5
         with:
           context: app/backend
           push: true
-          tags: ghcr.io/${{ env.OWNER }}/prospero-api:latest
+          tags: |
+            ghcr.io/${{ env.OWNER }}/prospero-api:latest
+            ghcr.io/${{ env.OWNER }}/prospero-api:${{ env.IMAGE_TAG }}
 
       - name: Log in op Azure
         uses: azure/login@v2
@@ -49,7 +54,7 @@ jobs:
           az containerapp update \
             --name prospero-api \
             --resource-group prospero-rg \
-            --image ghcr.io/${{ env.OWNER }}/prospero-api:latest \
+            --image ghcr.io/${{ env.OWNER }}/prospero-api:${{ env.IMAGE_TAG }} \
             --set-env-vars \
               Jwt__Key=secretref:jwt-key \
               Jwt__Issuer=prospero \
