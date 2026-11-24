@@ -546,6 +546,14 @@ select.form-in { cursor: pointer; }
 .bank-login-btn { width: 100%; margin-top: 4px; }
 .bank-login-err { color: var(--danger); font-size: .85rem; }
 .bank-login .form-in { width: 100%; }
+.pw-wrap { position: relative; width: 100%; }
+.pw-wrap .form-in { width: 100%; padding-right: 44px; }
+.pw-toggle {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; color: var(--muted); padding: 4px;
+  display: flex; align-items: center;
+}
+.pw-toggle:hover { color: var(--fg); }
 
 .bank-header { padding: 12px 14px 0; }
 .bank-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -575,9 +583,41 @@ select.form-in { cursor: pointer; }
 .bank-cat-grid { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0 8px; }
 .bank-cat-chip {
   padding: 6px 12px; border-radius: 20px; font-size: .82rem;
-  background: var(--accent-t); color: var(--accent);
-  border: 1px solid var(--accent); cursor: pointer;
+  background: color-mix(in srgb, var(--chip-color, var(--accent)) 12%, transparent);
+  color: var(--chip-color, var(--accent));
+  border: 1px solid color-mix(in srgb, var(--chip-color, var(--accent)) 40%, transparent);
+  cursor: pointer;
 }
-.bank-cat-chip:hover { background: var(--accent); color: #fff; }
+.bank-cat-chip:hover, .bank-cat-chip.selected {
+  background: var(--chip-color, var(--accent)); color: #fff;
+}
+.bank-cat-custom { display: flex; gap: 8px; margin: 4px 0 8px; }
+.bank-cat-custom .form-in { flex: 1; }
+.bank-cat-custom .btn-primary { white-space: nowrap; padding: 0 14px; }
+
+.bank-cat-filter {
+  display: flex; gap: 6px; overflow-x: auto; padding: 6px 14px 2px;
+  scrollbar-width: none;
+}
+.bank-cat-filter::-webkit-scrollbar { display: none; }
+.bank-filter-chip {
+  flex-shrink: 0; padding: 4px 10px; border-radius: 20px; font-size: .78rem;
+  background: var(--surface); color: var(--muted);
+  border: 1px solid var(--border); cursor: pointer; white-space: nowrap;
+}
+.bank-filter-chip.active {
+  background: color-mix(in srgb, var(--chip-color, var(--accent)) 12%, transparent);
+  color: var(--chip-color, var(--accent));
+  border-color: color-mix(in srgb, var(--chip-color, var(--accent)) 40%, transparent);
+}
+
+.bank-cat-badge {
+  display: inline-block; font-size: .75rem; font-weight: 500;
+  color: var(--chip-color, var(--accent));
+  background: color-mix(in srgb, var(--chip-color, var(--accent)) 10%, transparent);
+  border-radius: 10px; padding: 1px 7px; margin-top: 3px; cursor: pointer;
+}
+.bank-cat-empty { color: var(--subtle); font-size: .78rem; cursor: pointer; display: block; margin-top: 2px; }
+.bank-cat-empty em { font-style: normal; }
 
 .bank-more-btn { width: calc(100% - 28px); margin: 8px 14px; }
