@@ -49,6 +49,11 @@ jobs:
               Auth__PasswordHash=secretref:auth-password-hash \
               ASPNETCORE_ENVIRONMENT=Production
 
+      - name: Smoke test
+        run: |
+          sleep 10
+          curl -f ${{ secrets.BACKEND_URL }}/health | grep '"status":"ok"'
+
       - name: Azure uitloggen
         if: always()
         run: az logout
