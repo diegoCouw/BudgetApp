@@ -18,6 +18,8 @@ Verwijder enkel deze groep om alles in één keer op te ruimen.
 |---|---|
 | `jwt-key` | Signing key voor JWT tokens |
 | `auth-password-hash` | SHA-256 hash van het inlogwachtwoord |
+| `enablebanking-private-key` | RSA private key (base64-encoded) voor Enable Banking API |
+| `enablebanking-app-id` | Application ID van de Prospero sandbox app op enablebanking.com |
 
 Secrets zijn enkel zichtbaar via de Azure portal (niet in logs, niet in code).
 

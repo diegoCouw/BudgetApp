@@ -89,10 +89,13 @@ Zie [AZURE.md](AZURE.md) voor de volledige setup en kostenoverzicht.
 
 | Endpoint | Auth | Beschrijving |
 |---|---|---|
-| `GET /health` | Nee | Health check |
+| `GET /health` | Nee | Health check + versie |
 | `POST /auth/login` | Nee | Wachtwoord → JWT token |
+| `POST /bank/connect` | JWT | Start Enable Banking consent flow → redirect-URL naar BNP Fortis |
+| `GET /bank/callback` | Nee | Ontvangt OAuth2 code → wisselt in voor session, slaat accounts op |
+| `GET /bank/sync` | JWT | Haalt nieuwe transacties op (dagelijkse pull) |
 
-Secrets (JWT key, wachtwoord hash) staan uitsluitend als Azure Container App secrets — nooit in code of git.
+Secrets (JWT key, wachtwoord hash, Enable Banking private key) staan uitsluitend als Azure Container App secrets — nooit in code of git.
 
 ---
 
@@ -193,6 +196,8 @@ Update-flow:
 |---|---|---|
 | Azure Container App | JWT signing key | Azure secret — nooit in code of git |
 | Azure Container App | Wachtwoord hash (SHA-256) | Azure secret — nooit in code of git |
+| Azure Container App | Enable Banking private key (RSA, base64) | Azure secret — nooit in code of git |
+| Azure Container App | Enable Banking application ID | Azure secret — nooit in code of git |
 | GitHub Actions | Azure credentials (Service Principal) | GitHub Secret |
 | GitHub Actions | Backend URL | GitHub Secret |
 

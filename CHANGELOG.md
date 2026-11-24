@@ -4,6 +4,23 @@ Alle wijzigingen per versie of feature, nieuwste bovenaan.
 
 ---
 
+## [develop] — 24/11/2026 — Bank API integratie
+
+### 🏦 Enable Banking (in ontwikkeling)
+- **Enable Banking** gekozen als PSD2-aggregator — directe BNP Fortis API vereist TPP-licentie (niet haalbaar voor persoonlijk gebruik)
+- Sandbox applicatie `Prospero` aangemaakt op enablebanking.com
+- RSA private key (base64) en Application ID opgeslagen als Azure Container App secrets
+- Planned endpoints: `POST /bank/connect` (consent starten), `GET /bank/callback` (token inwisselen), `GET /bank/sync` (dagelijkse pull)
+- Consent geldig 90 dagen, daarna vernieuwing via itsme of kaartlezer
+
+### 🔧 Deploy pipeline fixes
+- Containerapp naam en resource group hardcoded in workflow (secret-waarden veroorzaakten "does not exist" fout)
+- `workflow_dispatch` trigger toegevoegd — workflow kan nu handmatig gestart worden
+- Expliciete Azure subscription ingesteld na login (`az account set`)
+- Smoke test toegevoegd na deploy: `GET /health` verifieert versie en status
+
+---
+
 ## [develop] — 24/11/2026 — Infrastructure & backend
 
 ### 🏗️ Architectuur
