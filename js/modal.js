@@ -31,7 +31,9 @@ function closeModal() {
 
 // ── Add transaction ───────────────────────────────────────────────────────────
 function openAdd() {
-  var txType = 'expense';
+  var txType    = 'expense';
+  var splitMode = false;
+  var splits    = [{ cat: 'overig', amount: '' }, { cat: 'overig', amount: '' }];
   _selCat = 'overig';
 
   function buildForm(savedAmt, savedDate, savedDesc) {
@@ -63,7 +65,12 @@ function openAdd() {
 
       (isTransfer ? _buildTransferForm(savedAmt, savedDate, savedDesc) : _buildTxForm(isExpense, catBtns, savedAmt, savedDate, savedDesc)) +
 
-      '<button class="btn-primary" id="save-btn">Opslaan</button>';
+      (isExpense ? '<button class="btn-ghost" id="split-toggle" style="margin-top:4px;margin-bottom:0;">' +
+        (splitMode ? '✕ Opdelen annuleren' : '⊕ Opdelen') + '</button>' : '') +
+
+      (isExpense && splitMode ? _buildSplitRows(splits, getCatList()) : '') +
+
+      '<button class="btn-primary" id="save-btn" style="margin-top:12px;">Opslaan</button>';
 
     // Wire type toggle
     function wireToggle(id, type) {
@@ -91,6 +98,38 @@ function openAdd() {
         _selCat = btn.dataset.cat;
         document.querySelectorAll('.cat-btn').forEach(function (b) { b.classList.remove('sel'); });
         btn.classList.add('sel');
+      });
+    }
+
+    // Split toggle
+    if (isExpense && document.getElementById('split-toggle')) {
+      document.getElementById('split-toggle').addEventListener('click', function () {
+        var a = document.getElementById('amt-in');
+        var curAmt  = a ? a.value : savedAmt;
+        var curDate = (document.getElementById('date-in') || {}).value || savedDate;
+        var curDesc = (document.getElementById('desc-in') || {}).value || savedDesc;
+        splitMode = !splitMode;
+        if (splitMode) {
+          var tot = parseFloat(curAmt.replace(',', '.'));
+          if (tot > 0) {
+            splits = [
+              { cat: _selCat,   amount: '' },
+              { cat: 'overig',  amount: '' },
+            ];
+          }
+        }
+        buildForm(curAmt, curDate, curDesc);
+      });
+    }
+
+    // Split rows wiring (add row, remove row, update state on change)
+    if (isExpense && splitMode) {
+      _wireSplitRows(splits, getCatList(), function () {
+        var a = document.getElementById('amt-in');
+        var curAmt  = a ? a.value : savedAmt;
+        var curDate = (document.getElementById('date-in') || {}).value || savedDate;
+        var curDesc = (document.getElementById('desc-in') || {}).value || savedDesc;
+        buildForm(curAmt, curDate, curDesc);
       });
     }
 
@@ -137,12 +176,32 @@ function openAdd() {
 
       var parts = date.split('-').map(Number);
       var y = parts[0], m = parts[1];
+      var ymVal = ymKey(y, m - 1);
+
+      // Split mode: validate and save N transactions
+      if (isExpense && splitMode) {
+        var splitTotal = splits.reduce(function (s, r) { return s + (parseFloat(r.amount) || 0); }, 0);
+        splitTotal = Math.round(splitTotal * 100) / 100;
+        var target  = Math.round(amount * 100) / 100;
+        if (Math.abs(splitTotal - target) > 0.005) {
+          var remEl = document.getElementById('split-remaining');
+          if (remEl) remEl.style.color = 'var(--danger)';
+          return;
+        }
+        for (var si = 0; si < splits.length; si++) {
+          var sAmt = Math.round((parseFloat(splits[si].amount) || 0) * 100) / 100;
+          if (sAmt <= 0) continue;
+          await addTx({ amount: sAmt, cat: splits[si].cat, date: date, ym: ymVal,
+                        desc: desc, ts: Date.now() + si, type: 'expense', tags: tags });
+        }
+        closeModal(); curY = y; curM = m - 1; await render(); return;
+      }
 
       await addTx({
         amount: Math.round(amount * 100) / 100,
         cat:    isIncome ? 'inkomst' : _selCat,
         date:   date,
-        ym:     ymKey(y, m - 1),
+        ym:     ymVal,
         desc:   desc,
         ts:     Date.now(),
         type:   txType,
@@ -163,6 +222,91 @@ function openAdd() {
 
   buildForm();
   showModal();
+}
+
+function _buildSplitRows(splits, allCats) {
+  var catOpts = allCats.map(function (c) {
+    return '<option value="' + c.id + '">' + c.emoji + ' ' + esc(c.label) + '</option>';
+  }).join('');
+
+  var rows = splits.map(function (s, i) {
+    var opts = allCats.map(function (c) {
+      return '<option value="' + c.id + '"' + (c.id === s.cat ? ' selected' : '') + '>' +
+        c.emoji + ' ' + esc(c.label) + '</option>';
+    }).join('');
+    return '<div class="split-row" data-idx="' + i + '">' +
+      '<span class="amt-sign" style="margin-left:0;">€</span>' +
+      '<input class="split-amt form-in" type="number" inputmode="decimal" step="0.01" min="0" ' +
+        'placeholder="0,00" value="' + esc(s.amount + '') + '" style="width:90px;flex:0 0 90px;">' +
+      '<select class="split-cat form-in" style="flex:1;min-width:0;">' + opts + '</select>' +
+      (splits.length > 2
+        ? '<button class="icon-btn-sm split-del" data-idx="' + i + '" type="button">✕</button>'
+        : '<span style="width:32px;flex:0 0 32px;"></span>') +
+    '</div>';
+  }).join('');
+
+  return '<div id="split-section">' +
+    '<div class="field-lbl" style="margin-top:12px;">Verdeling</div>' +
+    rows +
+    '<button class="btn-ghost" id="split-add-row" type="button" style="margin-top:4px;font-size:13px;">+ Rij toevoegen</button>' +
+    '<div id="split-remaining" style="font-size:13px;text-align:center;margin-top:6px;color:var(--muted);"></div>' +
+  '</div>';
+}
+
+function _wireSplitRows(splits, allCats, rebuild) {
+  function readAndUpdate() {
+    document.querySelectorAll('.split-row').forEach(function (row) {
+      var idx = Number(row.dataset.idx);
+      var amt = row.querySelector('.split-amt');
+      var cat = row.querySelector('.split-cat');
+      if (amt) splits[idx].amount = amt.value;
+      if (cat) splits[idx].cat    = cat.value;
+    });
+    updateRemaining();
+  }
+
+  function updateRemaining() {
+    var amtIn = document.getElementById('amt-in');
+    var total = parseFloat((amtIn ? amtIn.value : '0').replace(',', '.')) || 0;
+    var used  = splits.reduce(function (s, r) { return s + (parseFloat(r.amount) || 0); }, 0);
+    var rem   = Math.round((total - used) * 100) / 100;
+    var el    = document.getElementById('split-remaining');
+    if (!el) return;
+    if (Math.abs(rem) < 0.005) {
+      el.textContent = '✓ Volledig verdeeld';
+      el.style.color = '#22C55E';
+    } else {
+      el.textContent = 'Nog te verdelen: ' + eur(rem < 0 ? 0 : rem) + (rem < 0 ? ' (te veel)' : '');
+      el.style.color = rem < 0 ? 'var(--danger)' : 'var(--muted)';
+    }
+  }
+
+  document.querySelectorAll('.split-amt, .split-cat').forEach(function (el) {
+    el.addEventListener('input', readAndUpdate);
+    el.addEventListener('change', readAndUpdate);
+  });
+
+  document.querySelectorAll('.split-del').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      readAndUpdate();
+      splits.splice(Number(this.dataset.idx), 1);
+      rebuild();
+    });
+  });
+
+  var addBtn = document.getElementById('split-add-row');
+  if (addBtn) {
+    addBtn.addEventListener('click', function () {
+      readAndUpdate();
+      splits.push({ cat: 'overig', amount: '' });
+      rebuild();
+    });
+  }
+
+  var amtIn = document.getElementById('amt-in');
+  if (amtIn) amtIn.addEventListener('input', updateRemaining);
+
+  updateRemaining();
 }
 
 function _buildTxForm(isExpense, catBtns, savedAmt, savedDate, savedDesc, savedTags) {
