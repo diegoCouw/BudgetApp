@@ -576,7 +576,8 @@ function openSettings() {
     '<div id="upd-feedback"></div>' +
 
     '<p class="field-lbl" style="margin-top:20px;">Data beheer</p>' +
-    '<button class="btn-primary" id="export-btn">Exporteer data</button>' +
+    '<button class="btn-primary" id="export-btn">Exporteer data (JSON)</button>' +
+    '<button class="btn-ghost" id="export-csv-btn" style="margin-top:10px;">Exporteer als CSV</button>' +
     '<button class="btn-ghost" id="import-btn" style="margin-top:10px;">Importeer data</button>' +
     '<input type="file" id="import-file" accept=".json" style="display:none">' +
     '<div id="import-preview"></div>';
@@ -622,6 +623,34 @@ function openSettings() {
       URL.revokeObjectURL(url);
     } catch (_) {}
     btn.textContent = 'Exporteer data'; btn.disabled = false;
+  });
+
+  document.getElementById('export-csv-btn').addEventListener('click', async function () {
+    var btn = document.getElementById('export-csv-btn');
+    btn.textContent = 'Bezig…'; btn.disabled = true;
+    try {
+      var txs    = await getAllTxs();
+      var catMap = getCatMap();
+      var TYPE_NL = { expense: 'Uitgave', income: 'Inkomst', transfer: 'Overschrijving' };
+      var rows = [['Datum', 'Type', 'Categorie', 'Omschrijving', 'Bedrag'].join(';')];
+      txs.sort(function (a, b) { return a.date < b.date ? 1 : -1; }).forEach(function (t) {
+        var parts   = (t.date || '').split('-');
+        var dateFmt = parts.length === 3 ? parts[2] + '/' + parts[1] + '/' + parts[0] : (t.date || '');
+        var typeStr = TYPE_NL[t.type || 'expense'] || t.type;
+        var cat     = catMap[t.cat] ? catMap[t.cat].label : (t.cat || '');
+        var desc    = (t.desc || '').replace(/"/g, '""');
+        var amt     = t.amount.toFixed(2).replace('.', ',');
+        rows.push([dateFmt, typeStr, '"' + cat + '"', '"' + desc + '"', amt].join(';'));
+      });
+      var csv  = '﻿' + rows.join('\r\n'); // BOM for Excel nl-BE
+      var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      var url  = URL.createObjectURL(blob);
+      var a    = document.createElement('a');
+      a.href = url; a.download = 'budget-' + todayISO() + '.csv';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (_) {}
+    btn.textContent = 'Exporteer als CSV'; btn.disabled = false;
   });
 
   document.getElementById('import-btn').addEventListener('click', function () {
