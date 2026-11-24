@@ -11,8 +11,15 @@ public static class BankEndpoints
         {
             var callbackUrl = config["EnableBanking:CallbackUrl"]
                 ?? throw new InvalidOperationException("EnableBanking:CallbackUrl ontbreekt");
-            var redirectUrl = await bank.StartConsentAsync(callbackUrl);
-            return Results.Ok(new { url = redirectUrl });
+            try
+            {
+                var redirectUrl = await bank.StartConsentAsync(callbackUrl);
+                return Results.Ok(new { url = redirectUrl });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(ex.Message, statusCode: 502);
+            }
         })
         .RequireAuthorization()
         .WithName("BankConnect");
