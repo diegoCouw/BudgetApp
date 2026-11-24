@@ -5,6 +5,15 @@ Formaat: `[versie] dag/maand/jaar uu:mm — beschrijving`
 
 ---
 
+## [feat/rollover] — 24/11/2026
+
+### ✨ Nieuw
+- **Rollover-dialoog** — bij het openen van de app wordt gecontroleerd of de vorige maand een positief overschot had (inkomsten − uitgaven). Als dat zo is, verschijnt er eenmalig een dialoog: overschot meenemen als inkomst, overschrijven naar een spaarrekening naar keuze, of negeren. Keuze wordt bijgehouden via localStorage.
+- **Spaarrekening verwijderen geblokkeerd** — een spaarrekening met saldo > €0 kan niet verwijderd worden; er verschijnt een inline foutmelding met het huidig saldo.
+- **Negatief saldo geblokkeerd** — een uitgave of overschrijving die de bronrekening negatief zou maken wordt geblokkeerd met een inline melding "Onvoldoende saldo".
+
+---
+
 ## [feat/search-transactions] — 23/11/2026
 
 ### ✨ Nieuw
