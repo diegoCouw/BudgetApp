@@ -458,6 +458,12 @@ body::before {
 }
 .date-filter-sep { color: var(--muted); font-size: 13px; text-align: center; }
 
+/* ── Split rows ── */
+.split-row {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+}
+.split-row .form-in { margin: 0; }
+
 /* ── Tags ── */
 .tx-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
 .tx-tag {

@@ -5,6 +5,13 @@ Formaat: `[versie] dag/maand/jaar uu:mm — beschrijving`
 
 ---
 
+## [feat/split-transaction] — 24/11/2026
+
+### ✨ Nieuw
+- **Transactie opdelen** — klik "⊕ Opdelen" in het uitgaven-formulier om het totaalbedrag over meerdere categorieën te verdelen. Elke rij heeft een eigen bedrag en categorie. Een "Nog te verdelen" indicator toont het restant. Op opslaan worden N losse transacties aangemaakt.
+
+---
+
 ## [feat/recurring-income] — 24/11/2026
 
 ### ✨ Nieuw
