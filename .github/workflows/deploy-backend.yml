@@ -17,6 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Lowercase repository owner
+        run: echo "OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Log in op GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -29,7 +32,7 @@ jobs:
         with:
           context: app/backend
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/prospero-api:latest
+          tags: ghcr.io/${{ env.OWNER }}/prospero-api:latest
 
       - name: Log in op Azure
         uses: azure/login@v2
@@ -41,7 +44,7 @@ jobs:
           az containerapp update \
             --name ${{ secrets.AZURE_CONTAINERAPP_NAME }} \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --image ghcr.io/${{ github.repository_owner }}/prospero-api:latest \
+            --image ghcr.io/${{ env.OWNER }}/prospero-api:latest \
             --set-env-vars \
               Jwt__Key=secretref:jwt-key \
               Jwt__Issuer=prospero \
