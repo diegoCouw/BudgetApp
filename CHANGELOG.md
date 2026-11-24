@@ -5,6 +5,13 @@ Formaat: `[versie] dag/maand/jaar uu:mm — beschrijving`
 
 ---
 
+## [feat/recurring-income] — 24/11/2026
+
+### ✨ Nieuw
+- **Terugkerende inkomsten** — domicilieringen ondersteunen nu ook inkomsten (bijv. loon). Keuze via type-toggle (Uitgave / Inkomst) bij aanmaken. Inkomsten tonen een groene +bedrag in de lijst en maken automatisch een inkomenst-transactie aan op de ingestelde dag.
+
+---
+
 ## [feat/tags] — 24/11/2026
 
 ### ✨ Nieuw

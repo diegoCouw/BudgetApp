@@ -199,8 +199,10 @@ async function processRecurring() {
       var txDate = todayD.getFullYear() + '-' +
                    String(todayD.getMonth() + 1).padStart(2, '0') + '-' +
                    String(txDay).padStart(2, '0');
-      await addTx({ amount: item.amount, cat: item.cat, date: txDate, ym: curYM2,
-                    desc: item.desc || '', ts: Date.now(), type: 'expense' });
+      var recTxType = item.type || 'expense';
+      var recCat    = recTxType === 'income' ? 'inkomst' : (item.cat || 'overig');
+      await addTx({ amount: item.amount, cat: recCat, date: txDate, ym: curYM2,
+                    desc: item.desc || '', ts: Date.now(), type: recTxType });
       item.lastProcessedYM = curYM2;
       await putRecord('recurring', item);
     }

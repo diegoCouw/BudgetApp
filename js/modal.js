@@ -1025,10 +1025,13 @@ function openRecurringSettings() {
       '<h2 class="mtitle">Domicilieringen</h2>' +
       (items.length === 0 ? '<div style="text-align:center;color:var(--muted);padding:20px 0;font-size:14px;">Geen vaste betalingen.</div>' : '') +
       items.map(function (item) {
-        var c = catMap[item.cat] || catMap['overig'];
+        var isInc = item.type === 'income';
+        var c     = isInc ? { emoji: '💰', label: 'Inkomst' } : (catMap[item.cat] || catMap['overig']);
+        var amtCol = isInc ? '#22C55E' : 'var(--fg)';
+        var amtPfx = isInc ? '+' : '-';
         return '<div class="settings-item">' +
           '<div><div class="settings-item-label">' + c.emoji + ' ' + esc(item.desc || c.label) + '</div>' +
-            '<div class="settings-item-sub">' + eur(item.amount) + ' · dag ' + item.dayOfMonth + ' van de maand</div></div>' +
+            '<div class="settings-item-sub" style="color:' + amtCol + '">' + amtPfx + eur(item.amount) + ' · dag ' + item.dayOfMonth + ' van de maand</div></div>' +
           '<button class="icon-btn-sm del-rec" data-id="' + item.id + '">🗑</button>' +
         '</div>';
       }).join('') +
@@ -1047,52 +1050,72 @@ function openRecurringSettings() {
 }
 
 function openAddRecurring() {
-  var selRecCat = 'overig';
-  var allCats   = getCatList();
+  var selRecCat  = 'overig';
+  var recType    = 'expense';
+  var allCats    = getCatList();
 
-  var catBtns = allCats.map(function (c) {
-    var short = c.label.length > 9 ? c.label.slice(0, 8) + '…' : c.label;
-    return '<button class="cat-btn' + (c.id === selRecCat ? ' sel' : '') +
-      '" data-cat="' + c.id + '" type="button">' +
-      '<span class="emo">' + c.emoji + '</span>' +
-      '<span>' + short + '</span>' +
-    '</button>';
-  }).join('');
+  function buildRecForm() {
+    var isInc   = recType === 'income';
+    var catBtns = allCats.map(function (c) {
+      var short = c.label.length > 9 ? c.label.slice(0, 8) + '…' : c.label;
+      return '<button class="cat-btn' + (c.id === selRecCat ? ' sel' : '') +
+        '" data-cat="' + c.id + '" type="button">' +
+        '<span class="emo">' + c.emoji + '</span>' +
+        '<span>' + short + '</span>' +
+      '</button>';
+    }).join('');
 
-  document.getElementById('mcontent').innerHTML =
-    _backBtn(openRecurringSettings) +
-    '<h2 class="mtitle">Vaste betaling toevoegen</h2>' +
-    '<div class="amt-wrap" id="amtwrap-rec">' +
-      '<span class="amt-sign">€</span>' +
-      '<input id="rec-amount" type="number" inputmode="decimal" placeholder="0,00" step="0.01" min="0">' +
-    '</div>' +
-    '<div class="field-lbl">Categorie</div>' +
-    '<div class="cat-grid" id="cg-rec">' + catBtns + '</div>' +
-    '<div class="field"><div class="field-lbl">Omschrijving</div>' +
-      '<input class="form-in" type="text" id="rec-desc" placeholder="Bijv. Huurprijs" maxlength="80"></div>' +
-    '<div class="field"><div class="field-lbl">Dag van de maand (1–31)</div>' +
-      '<input class="form-in" type="number" id="rec-day" min="1" max="31" value="1"></div>' +
-    '<button class="btn-primary" id="save-rec-btn">Opslaan</button>';
+    document.getElementById('mcontent').innerHTML =
+      _backBtn(openRecurringSettings) +
+      '<h2 class="mtitle">Vaste betaling toevoegen</h2>' +
+      '<div class="type-toggle">' +
+        '<button class="type-btn' + (!isInc ? ' active' : '') + '" id="rec-type-exp">Uitgave</button>' +
+        '<button class="type-btn' + ( isInc ? ' active' : '') + '" id="rec-type-inc">Inkomst</button>' +
+      '</div>' +
+      '<div class="amt-wrap" id="amtwrap-rec">' +
+        '<span class="amt-sign">€</span>' +
+        '<input id="rec-amount" type="number" inputmode="decimal" placeholder="0,00" step="0.01" min="0">' +
+      '</div>' +
+      (!isInc ? '<div class="field-lbl">Categorie</div><div class="cat-grid" id="cg-rec">' + catBtns + '</div>' : '') +
+      '<div class="field"><div class="field-lbl">Omschrijving</div>' +
+        '<input class="form-in" type="text" id="rec-desc" placeholder="' + (isInc ? 'Bijv. Loon' : 'Bijv. Huurprijs') + '" maxlength="80"></div>' +
+      '<div class="field"><div class="field-lbl">Dag van de maand (1–31)</div>' +
+        '<input class="form-in" type="number" id="rec-day" min="1" max="31" value="1"></div>' +
+      '<button class="btn-primary" id="save-rec-btn">Opslaan</button>';
 
-  document.getElementById('back-btn').addEventListener('click', openRecurringSettings);
+    document.getElementById('back-btn').addEventListener('click', openRecurringSettings);
+    document.getElementById('rec-type-exp').addEventListener('click', function () { recType = 'expense'; buildRecForm(); });
+    document.getElementById('rec-type-inc').addEventListener('click', function () { recType = 'income';  buildRecForm(); });
 
-  document.getElementById('cg-rec').addEventListener('click', function (e) {
-    var btn = e.target.closest('.cat-btn');
-    if (!btn) return;
-    selRecCat = btn.dataset.cat;
-    document.querySelectorAll('#cg-rec .cat-btn').forEach(function (b) { b.classList.remove('sel'); });
-    btn.classList.add('sel');
-  });
+    var cgRec = document.getElementById('cg-rec');
+    if (cgRec) {
+      cgRec.addEventListener('click', function (e) {
+        var btn = e.target.closest('.cat-btn');
+        if (!btn) return;
+        selRecCat = btn.dataset.cat;
+        document.querySelectorAll('#cg-rec .cat-btn').forEach(function (b) { b.classList.remove('sel'); });
+        btn.classList.add('sel');
+      });
+    }
 
-  document.getElementById('save-rec-btn').addEventListener('click', async function () {
-    var amount = parseFloat(document.getElementById('rec-amount').value.replace(',', '.'));
-    var desc   = document.getElementById('rec-desc').value.trim();
-    var day    = parseInt(document.getElementById('rec-day').value);
-    if (!amount || amount <= 0) { document.getElementById('amtwrap-rec').style.borderColor = 'var(--danger)'; return; }
-    if (!day || day < 1 || day > 31) return;
-    await addRecord('recurring', { amount: Math.round(amount * 100) / 100, cat: selRecCat, desc: desc, dayOfMonth: day, lastProcessedYM: null });
-    openRecurringSettings();
-  });
+    document.getElementById('save-rec-btn').addEventListener('click', async function () {
+      var amount = parseFloat(document.getElementById('rec-amount').value.replace(',', '.'));
+      var desc   = document.getElementById('rec-desc').value.trim();
+      var day    = parseInt(document.getElementById('rec-day').value);
+      if (!amount || amount <= 0) { document.getElementById('amtwrap-rec').style.borderColor = 'var(--danger)'; return; }
+      if (!day || day < 1 || day > 31) return;
+      var cat = recType === 'income' ? 'inkomst' : selRecCat;
+      await addRecord('recurring', { amount: Math.round(amount * 100) / 100, cat: cat, desc: desc, dayOfMonth: day, lastProcessedYM: null, type: recType });
+      openRecurringSettings();
+    });
+
+    setTimeout(function () {
+      var inp = document.getElementById('rec-amount');
+      if (inp) inp.focus();
+    }, 60);
+  }
+
+  buildRecForm();
 }
 
 // ── Helper: back button HTML ──────────────────────────────────────────────────
