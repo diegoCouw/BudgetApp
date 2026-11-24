@@ -1,5 +1,17 @@
 # Azure — setup en beheer
 
+## Inloggen op Azure CLI
+
+```powershell
+$env:PATH += ";C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin"
+az login
+```
+
+Dit opent een browser. Log in met je Microsoft-account dat toegang heeft tot `prospero-rg`.  
+Daarna werken alle `az containerapp`-commando's hieronder.
+
+---
+
 ## Wat staat er in Azure
 
 Alle resources zitten in **resource group `prospero-rg`** (North Europe — Dublin).  
