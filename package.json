@@ -7,8 +7,8 @@
   },
   "jest": {
     "collectCoverageFrom": [
-      "js/format.js",
-      "js/db.js"
+      "pwa/js/format.js",
+      "pwa/js/db.js"
     ]
   },
   "devDependencies": {

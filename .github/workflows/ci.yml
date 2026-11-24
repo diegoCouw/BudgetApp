@@ -39,10 +39,9 @@ jobs:
       - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: .
+          publish_dir: pwa
           destination_dir: dev
           keep_files: true
-          exclude_assets: '.github,node_modules,tests,package.json,package-lock.json'
 
   # ── Deploy productie (main → /) ────────────────────────────────────────────
   deploy-production:
@@ -94,6 +93,5 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: .
+          publish_dir: pwa
           keep_files: true
-          exclude_assets: '.github,node_modules,tests,package.json,package-lock.json'

@@ -3,7 +3,7 @@
 const {
   CATS, getCatList, catById, CAT_COLORS, MNL,
   eur, ymKey, todayISO, fmtDay, esc,
-} = require('../js/format.js');
+} = require('../pwa/js/format.js');
 
 // ── CATS & categories ────────────────────────────────────────────────────────
 
@@ -134,7 +134,7 @@ test('esc escapet combinatie van speciale tekens', () => {
 
 // ── getCatMap ────────────────────────────────────────────────────────────────
 
-const { getCatMap } = require('../js/format.js');
+const { getCatMap } = require('../pwa/js/format.js');
 
 test('getCatMap geeft object terug met category ids als keys', () => {
   const map = getCatMap();
