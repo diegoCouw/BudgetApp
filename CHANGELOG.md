@@ -14,6 +14,13 @@ Formaat: `[versie] dag/maand/jaar uu:mm — beschrijving`
 
 ---
 
+## [feat/search-transactions] — 23/11/2026
+
+### ✨ Nieuw
+- **Zoeken in transacties** — zoekbalk boven de transactielijst filtert live op omschrijving of categorienaam (hoofdletterongevoelig). Lege zoekterm toont alle transacties; geen resultaten geeft een duidelijke melding.
+
+---
+
 ## [feat/edit-transaction] — 23/11/2026
 
 ### ✨ Nieuw
