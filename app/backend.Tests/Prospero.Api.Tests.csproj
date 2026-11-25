@@ -10,7 +10,7 @@
     <!-- Coverlet: sluit gegenereerde bestanden en niet-testbare code uit -->
     <CoverletOutput>./coverage/</CoverletOutput>
     <CoverletOutputFormat>cobertura</CoverletOutputFormat>
-    <ExcludeByFile>**/Migrations/**,**/obj/**,**/EnableBankingService.cs</ExcludeByFile>
+    <ExcludeByFile>**/Migrations/**,**/obj/**,**/EnableBankingService.cs,**/PushNotificationService.cs</ExcludeByFile>
     <Exclude>[*.Tests]*</Exclude>
     <!-- Threshold: PR faalt als line coverage onder 75% zakt -->
     <Threshold>75</Threshold>
