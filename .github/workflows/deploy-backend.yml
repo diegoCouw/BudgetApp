@@ -65,10 +65,61 @@ jobs:
               ConnectionStrings__Neon=secretref:neon-connection-string \
               ASPNETCORE_ENVIRONMENT=Production
 
-      - name: Smoke test
+      - name: "[Azure] Wacht op container start"
         run: |
-          sleep 10
-          curl -f ${{ secrets.BACKEND_URL }}/health | grep '"status":"ok"'
+          echo "=== Wachten op container start (max 60s) ==="
+          for i in $(seq 1 12); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.BACKEND_URL }}/health" || echo "000")
+            echo "Poging $i/12 — HTTP $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "Container bereikbaar na $((i * 5))s"
+              break
+            fi
+            if [ "$i" = "12" ]; then
+              echo "ERROR: Container niet bereikbaar na 60s"
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: "[Azure] Container App health check"
+        run: |
+          echo "=== Azure Container App health check ==="
+          RESPONSE=$(curl -s "${{ secrets.BACKEND_URL }}/health")
+          echo "Response: $RESPONSE"
+          STATUS=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status','?'))")
+          VERSION=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('version','?'))")
+          TIMESTAMP=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('timestamp','?'))")
+          echo "  Status:    $STATUS"
+          echo "  Versie:    $VERSION"
+          echo "  Tijdstip:  $TIMESTAMP"
+          if [ "$STATUS" != "ok" ]; then
+            echo "FAIL: status is niet 'ok'"
+            exit 1
+          fi
+          echo "OK: Container App is gezond"
+
+      - name: "[Neon] Database health check"
+        run: |
+          echo "=== Neon database health check ==="
+          HTTP_CODE=$(curl -s -o /tmp/db_health.json -w "%{http_code}" "${{ secrets.BACKEND_URL }}/health/db")
+          RESPONSE=$(cat /tmp/db_health.json)
+          echo "HTTP status: $HTTP_CODE"
+          echo "Response:    $RESPONSE"
+          CONNECTED=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('connected','?'))")
+          APPLIED=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('applied_migrations','?'))")
+          PENDING=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('pending_migrations','?'))")
+          echo "  Verbonden:          $CONNECTED"
+          echo "  Toegepaste migraties: $APPLIED"
+          echo "  Openstaande migraties: $PENDING"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "FAIL: database niet bereikbaar (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+          if [ "$PENDING" != "0" ]; then
+            echo "WAARSCHUWING: $PENDING openstaande migratie(s) gevonden"
+          fi
+          echo "OK: Database is gezond"
 
       - name: Azure uitloggen
         if: always()

@@ -2,9 +2,9 @@ name: CI / Deploy
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
-    branches: [main, develop]
+    branches: [main]
 
 jobs:
   # ── Tests ──────────────────────────────────────────────────────────────────
@@ -24,24 +24,6 @@ jobs:
 
       - name: Tests draaien
         run: npm test
-
-  # ── Deploy preview (develop → /dev/) ──────────────────────────────────────
-  deploy-preview:
-    name: Deploy preview
-    needs: test
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: pwa
-          destination_dir: dev
-          keep_files: true
 
   # ── Deploy productie (main → /) ────────────────────────────────────────────
   deploy-production:
@@ -95,3 +77,35 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: pwa
           keep_files: true
+
+  # ── Verwijder gemergte branches ───────────────────────────────────────────
+  cleanup-branches:
+    name: Verwijder gemergte branches
+    needs: deploy-production
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verwijder branches die in main zitten
+        run: |
+          git fetch --prune origin
+          MERGED=$(git branch -r --merged origin/main \
+            | grep -v 'origin/main' \
+            | grep -v 'origin/gh-pages' \
+            | sed 's|origin/||' \
+            | tr -d ' ')
+          if [ -z "$MERGED" ]; then
+            echo "Geen branches te verwijderen"
+            exit 0
+          fi
+          echo "Gemergte branches:"
+          echo "$MERGED"
+          for branch in $MERGED; do
+            echo "Verwijder: $branch"
+            git push origin --delete "$branch" || echo "Kon $branch niet verwijderen (al weg)"
+          done
