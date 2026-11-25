@@ -8,7 +8,7 @@ using Prospero.Api.Models;
 
 namespace Prospero.Api.Services;
 
-public class EnableBankingService(IConfiguration config, HttpClient http)
+public class EnableBankingService(IConfiguration config, HttpClient http, ILogger<EnableBankingService> log)
 {
     private const string BaseUrl = "https://api.enablebanking.com";
 
@@ -105,7 +105,8 @@ public class EnableBankingService(IConfiguration config, HttpClient http)
         if (!resp.IsSuccessStatusCode)
         {
             var errBody = await resp.Content.ReadAsStringAsync();
-            Console.Error.WriteLine($"[Bank] account {accountId} {(int)resp.StatusCode}: {errBody}");
+            log.LogWarning("Enable Banking transacties mislukt voor account {AccountId} — HTTP {StatusCode}: {Body}",
+                accountId, (int)resp.StatusCode, errBody);
             return [];
         }
 

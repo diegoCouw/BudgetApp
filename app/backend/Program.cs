@@ -5,9 +5,20 @@ using Prospero.Api;
 using Prospero.Api.Data;
 using Prospero.Api.Services;
 using Prospero.Api.Models;
+using Serilog;
 using System.Text;
 
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .CreateBootstrapLogger();
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((ctx, services, cfg) => cfg
+    .ReadFrom.Configuration(ctx.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext()
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
 // ── JWT configuratie ──────────────────────────────────────────────────────
 var jwtKey = builder.Configuration["Jwt:Key"]
@@ -78,12 +89,29 @@ if (!app.Environment.IsEnvironment("Testing"))
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
+    var startupLog = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        db.Database.Migrate();
+        startupLog.LogInformation("Database migraties toegepast");
+    }
+    catch (Exception ex)
+    {
+        startupLog.LogCritical(ex, "Database migratie mislukt — applicatie stopt");
+        throw;
+    }
 }
+
+app.UseSerilogRequestLogging(opts =>
+{
+    opts.MessageTemplate = "HTTP {RequestMethod} {RequestPath} → {StatusCode} ({Elapsed:0}ms)";
+});
 
 app.UseExceptionHandler(err => err.Run(async ctx =>
 {
     var ex = ctx.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
+    var logger = ctx.RequestServices.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "Onverwerkte fout bij {Method} {Path}", ctx.Request.Method, ctx.Request.Path);
     ctx.Response.StatusCode = 500;
     ctx.Response.ContentType = "application/json";
     await ctx.Response.WriteAsJsonAsync(new { error = ex?.Message ?? "Onbekende fout" });

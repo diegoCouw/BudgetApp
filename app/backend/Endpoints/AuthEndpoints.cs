@@ -8,8 +8,9 @@ public static class AuthEndpoints
 {
     public static void MapAuthEndpoints(this WebApplication app)
     {
-        app.MapPost("/auth/login", (LoginRequest req, IConfiguration config, TokenService tokens) =>
+        app.MapPost("/auth/login", (LoginRequest req, IConfiguration config, TokenService tokens, ILoggerFactory logFactory) =>
         {
+            var log = logFactory.CreateLogger("Auth");
             var storedHash = config["Auth:PasswordHash"]
                 ?? throw new InvalidOperationException("Auth:PasswordHash ontbreekt");
 
@@ -18,9 +19,11 @@ public static class AuthEndpoints
                     Encoding.UTF8.GetBytes(inputHash),
                     Encoding.UTF8.GetBytes(storedHash)))
             {
+                log.LogWarning("Mislukte loginpoging");
                 return Results.Unauthorized();
             }
 
+            log.LogInformation("Succesvolle login");
             var token = tokens.Generate("owner");
             return Results.Ok(new { token });
         })
