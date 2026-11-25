@@ -48,6 +48,7 @@ BudgetApp/
 │       │   ├── AuthEndpoints.cs      POST /auth/login
 │       │   ├── BankEndpoints.cs      POST /bank/connect, GET /bank/callback, GET /bank/sync
 │       │   │                         GET /transactions, PATCH /transactions/{id}/category
+│       │   │                         DELETE /bank/session
 │       │   └── HealthEndpoints.cs    GET /health
 │       ├── Services/
 │       │   ├── TokenService.cs       JWT generatie (HS256, 60 min)
@@ -105,6 +106,7 @@ BudgetApp/
 | `GET` | `/bank/sync` | JWT | Nieuwe transacties ophalen (params: `from`, `to` als `yyyy-MM-dd`) |
 | `GET` | `/transactions` | JWT | Opgeslagen transacties (filter: `from`, `to`, `category`) |
 | `PATCH` | `/transactions/{id}/category` | JWT | Categorie instellen op een transactie |
+| `DELETE` | `/bank/session` | JWT | Verbreekt bankverbinding — verwijdert alle sessierijen uit DB |
 
 **Authenticatie:** `Authorization: Bearer <jwt>` header. JWT opgeslagen in `localStorage` onder key `prospero_jwt`.
 
@@ -201,6 +203,7 @@ Functies:
 - renderBankTxList(search)                — transactielijst, gekleurde badges, paginering
 - openCategoryPicker(txId, labelEl)       — modal met emoji-chips, eigen invoer, wissen
 - setCategory(txId, cat, labelEl)         — PATCH /transactions/{id}/category
+- doDisconnect()                          — DELETE /bank/session, inline bevestiging (tik 2x)
 ```
 
 ---
@@ -313,8 +316,7 @@ Coverage: `pwa/js/format.js` en `pwa/js/db.js`.
 *(geen)*
 
 ### Te doen — geprioriteerd
-1. **Bank koppeling afmelden** — sessie verwijderen uit DB en ontkoppelen van bank
-2. **What's new scherm** — na app-update kort venster met nieuwe features, enkel als er nieuws is
+1. **What's new scherm** — na app-update kort venster met nieuwe features, enkel als er nieuws is
 3. **Error handling & logging** — try-catch op alle endpoints, gestructureerde logging (Serilog), raadpleegbaar in Azure + browser
 4. **DB migration check** — health endpoint verifieert dat alle EF Core migrations aanwezig zijn
 5. **Service health warnings** — in-app waarschuwing als bank consent vervalt, secrets oud zijn
@@ -340,6 +342,7 @@ Coverage: `pwa/js/format.js` en `pwa/js/db.js`.
 - ✅ Bank tab in PWA (login, koppelen, sync)
 - ✅ Wachtwoord toggle (oog-icoon) op loginscherm
 - ✅ Transacties categoriseren (emoji, kleuren, filterbar, eigen categorie)
+- ✅ Bank koppeling afmelden (DELETE /bank/session, inline bevestiging)
 - ✅ CORS toegang GitHub Pages
 - ✅ Visual Studio solution file (Prospero.slnx)
 
