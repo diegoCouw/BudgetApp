@@ -7,9 +7,9 @@ on:
     branches: [main]
 
 jobs:
-  # ── Tests ──────────────────────────────────────────────────────────────────
-  test:
-    name: Tests
+  # ── PWA tests ─────────────────────────────────────────────────────────────
+  test-pwa:
+    name: PWA tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,17 +25,38 @@ jobs:
       - name: PWA tests draaien
         run: npm test
 
+  # ── Backend unit tests ─────────────────────────────────────────────────────
+  test-backend-unit:
+    name: Backend unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '11.0.x'
 
-      - name: Backend tests draaien
-        run: dotnet test app/backend.Tests/Prospero.Api.Tests.csproj -v minimal
+      - name: Unit tests draaien
+        run: dotnet test app/backend.Tests/Prospero.Api.Tests.csproj -v minimal --filter "FullyQualifiedName~.Unit."
+
+  # ── Backend integration tests ──────────────────────────────────────────────
+  test-backend-integration:
+    name: Backend integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '11.0.x'
+
+      - name: Integration tests draaien
+        run: dotnet test app/backend.Tests/Prospero.Api.Tests.csproj -v minimal --filter "FullyQualifiedName~.Integration."
 
   # ── Deploy productie (main → /) ────────────────────────────────────────────
   deploy-production:
     name: Deploy productie
-    needs: test
+    needs: [test-pwa, test-backend-unit, test-backend-integration]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
