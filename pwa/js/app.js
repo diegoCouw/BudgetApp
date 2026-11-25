@@ -157,6 +157,18 @@ function wire() {
   });
 }
 
+// ── What's new checker ───────────────────────────────────────────────────────
+function checkWhatsNew() {
+  try {
+    var seenVer = localStorage.getItem('prospero_seen_version');
+    if (!shouldShowWhatsNew(APP_VERSION, seenVer)) return;
+    var items = getWhatsNew(APP_VERSION);
+    if (!items) return;
+    localStorage.setItem('prospero_seen_version', APP_VERSION);
+    openWhatsNew(APP_VERSION, items);
+  } catch (_) {}
+}
+
 // ── Rollover checker ────────────────────────────────────────────────────
 async function checkRollover() {
   try {
@@ -285,6 +297,7 @@ async function processRecurring() {
   await processRecurring();
   wire();
   await render();
+  checkWhatsNew();
   await checkRollover();
   registerSW(); // non-blocking
 })();
