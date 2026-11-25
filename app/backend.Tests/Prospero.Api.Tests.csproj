@@ -7,6 +7,15 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <NoWarn>NU1903</NoWarn>
+    <!-- Coverlet: sluit gegenereerde bestanden en niet-testbare code uit -->
+    <CoverletOutput>./coverage/</CoverletOutput>
+    <CoverletOutputFormat>cobertura</CoverletOutputFormat>
+    <ExcludeByFile>**/Migrations/**,**/obj/**,**/EnableBankingService.cs</ExcludeByFile>
+    <Exclude>[*.Tests]*</Exclude>
+    <!-- Threshold: PR faalt als line coverage onder 75% zakt -->
+    <Threshold>75</Threshold>
+    <ThresholdType>line</ThresholdType>
+    <ThresholdStat>Total</ThresholdStat>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,6 +28,10 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="11.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0">
       <NoWarn>NU1903</NoWarn>
+    </PackageReference>
+    <PackageReference Include="coverlet.msbuild" Version="6.0.4">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
     </PackageReference>
   </ItemGroup>
 
