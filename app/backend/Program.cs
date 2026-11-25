@@ -42,9 +42,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // ── Database ──────────────────────────────────────────────────────────────
-var connStr = builder.Configuration.GetConnectionString("Neon")
-    ?? throw new InvalidOperationException("ConnectionStrings:Neon ontbreekt in configuratie");
-builder.Services.AddDbContext<AppDbContext>(opt => opt.UseNpgsql(connStr));
+if (builder.Environment.IsEnvironment("Testing"))
+{
+    // SQLite in-memory voor tests — vermijdt Npgsql/SQLite provider conflict
+    // Verbindingsstring komt via TestWebApp zodat elke testklasse een eigen database heeft
+    var testConnStr = builder.Configuration.GetConnectionString("Neon")
+        ?? "Data Source=testdb;Mode=Memory;Cache=Shared";
+    builder.Services.AddDbContext<AppDbContext>(opt => opt.UseSqlite(testConnStr));
+}
+else
+{
+    var connStr = builder.Configuration.GetConnectionString("Neon")
+        ?? throw new InvalidOperationException("ConnectionStrings:Neon ontbreekt in configuratie");
+    builder.Services.AddDbContext<AppDbContext>(opt => opt.UseNpgsql(connStr));
+}
 
 // ── Services ──────────────────────────────────────────────────────────────
 builder.Services.AddSingleton<TokenService>();
@@ -73,9 +84,10 @@ var app = builder.Build();
 // HTTPS wordt afgehandeld door Azure Container Apps — niet door de container zelf
 // app.UseHttpsRedirection();
 
-// Auto-migreer database bij opstarten
-using (var scope = app.Services.CreateScope())
+// Auto-migreer database bij opstarten (overgeslagen in test-omgeving — TestWebApp gebruikt EnsureCreated)
+if (!app.Environment.IsEnvironment("Testing"))
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var startupLog = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     try
@@ -118,3 +130,6 @@ app.MapHealthEndpoints();
 app.MapBankEndpoints();
 
 app.Run();
+
+// Maakt Program toegankelijk voor WebApplicationFactory in backend.Tests
+public partial class Program { }

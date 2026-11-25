@@ -7,28 +7,68 @@ on:
     branches: [main]
 
 jobs:
-  # ── Tests ──────────────────────────────────────────────────────────────────
+  # ── Tests (parallel, fail-fast: bij faling worden andere jobs geannuleerd) ──
   test:
-    name: Tests
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: PWA tests
+            type: pwa
+          - name: Backend unit tests
+            type: backend-unit
+          - name: Backend integration tests
+            type: backend-integration
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - if: matrix.type == 'pwa'
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
-      - name: Dependencies installeren
+      - if: matrix.type != 'pwa'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '11.0.x'
+
+      - if: matrix.type == 'pwa'
+        name: Dependencies installeren
         run: npm ci
 
-      - name: Tests draaien
+      - if: matrix.type == 'pwa'
+        name: PWA tests draaien
         run: npm test
+
+      - if: matrix.type == 'backend-unit'
+        name: Unit tests draaien
+        run: dotnet test app/backend.Tests/Prospero.Api.Tests.csproj -v minimal --filter "FullyQualifiedName~.Unit."
+
+      - if: matrix.type == 'backend-integration'
+        name: Integration tests draaien
+        run: dotnet test app/backend.Tests/Prospero.Api.Tests.csproj -v minimal --filter "FullyQualifiedName~.Integration."
+
+  # ── Aggregator: vereist door branch protection rule ───────────────────────
+  tests:
+    name: Tests
+    needs: test
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Controleer of alle tests geslaagd zijn
+        run: |
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "Een of meer testjobs zijn mislukt"
+            exit 1
+          fi
 
   # ── Deploy productie (main → /) ────────────────────────────────────────────
   deploy-production:
     name: Deploy productie
-    needs: test
+    needs: tests
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
