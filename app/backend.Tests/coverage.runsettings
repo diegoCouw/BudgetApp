@@ -4,7 +4,7 @@
     <DataCollectors>
       <DataCollector friendlyName="XPlat Code Coverage">
         <Configuration>
-          <ExcludeByFile>**/Migrations/**,**/obj/**,**/EnableBankingService.cs</ExcludeByFile>
+          <ExcludeByFile>**/Migrations/**,**/obj/**,**/EnableBankingService.cs,**/DefaultPushSender.cs</ExcludeByFile>
           <Exclude>[*.Tests]*</Exclude>
         </Configuration>
       </DataCollector>

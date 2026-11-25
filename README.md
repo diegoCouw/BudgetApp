@@ -6,8 +6,7 @@ Persoonlijke budget- en spaartrackerapp voor één gebruiker. Lokale data op het
 
 **Kernfunctionaliteit:** dagelijkse bank pull → push notificatie → transacties categoriseren.
 
-**Productie (PWA):** [https://diegocouw.github.io/BudgetApp/](https://diegocouw.github.io/BudgetApp/)  
-**Preview (develop):** [https://diegocouw.github.io/BudgetApp/dev/](https://diegocouw.github.io/BudgetApp/dev/)
+**Productie (PWA):** [https://diegocouw.github.io/BudgetApp/](https://diegocouw.github.io/BudgetApp/)
 
 ---
 
@@ -39,14 +38,17 @@ BudgetApp/
 │       │   ├── BankEndpoints.cs    POST /bank/connect, GET /bank/callback,
 │       │   │                       GET /bank/sync, GET /transactions,
 │       │   │                       PATCH /transactions/{id}/category
-│       │   └── HealthEndpoints.cs  GET /health
+│       │   ├── PushEndpoints.cs    POST /push/subscribe, DELETE /push/subscribe,
+│       │   │                       POST /push/notify
+│       │   └── HealthEndpoints.cs  GET /health, GET /health/db
 │       ├── Services/
-│       │   ├── TokenService.cs         JWT generatie (HS256, 60 min)
-│       │   ├── EnableBankingService.cs Enable Banking API-wrapper
-│       │   └── BankSessionStore.cs     In-memory sessie store
+│       │   ├── TokenService.cs             JWT generatie (HS256, 60 min)
+│       │   ├── EnableBankingService.cs     Enable Banking API-wrapper
+│       │   ├── BankSessionStore.cs         Database-backed sessie store
+│       │   └── PushNotificationService.cs  Web Push via VAPID
 │       ├── Data/
 │       │   ├── AppDbContext.cs         EF Core DbContext
-│       │   └── Entities.cs            TransactionEntity, BankSessionEntity
+│       │   └── Entities.cs            TransactionEntity, BankSessionEntity, PushSubscriptionEntity
 │       ├── Migrations/                EF Core migrations (auto-apply bij deploy)
 │       ├── Program.cs                 DI, CORS, JWT, auto-migrate
 │       └── Dockerfile                 Multi-stage build, poort 8080
@@ -58,7 +60,8 @@ BudgetApp/
 ├── app/Prospero.slnx           # Visual Studio solution
 └── .github/workflows/
     ├── ci.yml                  # Tests + deploy PWA naar GitHub Pages
-    └── deploy-backend.yml      # Docker build + deploy naar Azure Container Apps
+    ├── deploy-backend.yml      # Docker build + deploy naar Azure Container Apps
+    └── daily-sync.yml          # Cron 06:00 UTC: bank sync + push notificatie
 ```
 
 ---
@@ -77,13 +80,12 @@ BudgetApp/
 | Branch | URL | Doel |
 |---|---|---|
 | `main` | `/BudgetApp/` | Productie — dagelijks gebruik |
-| `develop` | `/BudgetApp/dev/` | Preview — testen voor release |
 | `main` (major) | `/BudgetApp/vN/` | Archief van vorige major versies |
 
 Bij push naar `main` deployt de CI automatisch naar productie.  
 Bij een major versie-bump archiveert de CI de huidige productie naar `/vN/`.
 
-> **Deploy flow:** feature branch → PR naar `main` → merge → automatische deploy. Develop-branch wordt gebruikt voor versiebeheer maar deployt niet meer automatisch naar `/dev/`.
+> **Deploy flow:** feature branch → PR naar `main` → merge → automatische deploy.
 
 ---
 
@@ -104,6 +106,9 @@ Zie [AZURE.md](AZURE.md) voor de volledige setup, secrets-beheer en kostenoverzi
 | `GET /bank/sync` | JWT | Haalt nieuwe transacties op (params: `from`, `to` als `yyyy-MM-dd`) |
 | `GET /transactions` | JWT | Geeft opgeslagen transacties terug (filter: `from`, `to`, `category`) |
 | `PATCH /transactions/{id}/category` | JWT | Stelt categorie in op een transactie |
+| `POST /push/subscribe` | JWT | Slaat Web Push subscription op |
+| `DELETE /push/subscribe` | JWT | Verwijdert Web Push subscription |
+| `POST /push/notify` | JWT | Stuurt push notificatie naar alle subscribers |
 
 Alle secrets staan uitsluitend als **Azure Container App secrets** — nooit in code of git.  
 De container schaalt naar nul bij inactiviteit (geen kosten). Cold start: ~3 seconden.
@@ -119,6 +124,7 @@ PWA-data (budgetten, categorieën, etc.) staat **lokaal** op het apparaat in Ind
 |---|---|
 | `Transactions` | Bankbetalingen — id, bedrag, datum, omschrijving, categorie |
 | `BankSessions` | Enable Banking OAuth2 sessie — geldig 90 dagen |
+| `PushSubscriptions` | Web Push subscriptions — endpoint + VAPID keys van de browser |
 
 De database wordt automatisch gemigreerd bij elke deploy (`db.Database.Migrate()`).  
 Verbinding via **directe Neon endpoint** (zonder `-pooler`) — de pooler blokkeert EF Core DDL statements.
@@ -132,24 +138,24 @@ Host=...;Database=neondb;Username=neondb_owner;Password=...;SSL Mode=Require
 
 ## Ontwikkelworkflow
 
-```
+```bash
 # Nieuwe feature
-git checkout develop
-git checkout -b feat/mijn-feature
+git checkout -b feat/mijn-feature  # of fix/ of chore/
 
 # Werk, commit, push
 git add ...
 git commit -m "feat: omschrijving"
 git push origin feat/mijn-feature
 
-# PR aanmaken → CI draait tests → merge naar develop
-# Develop deployt automatisch naar /BudgetApp/dev/ (preview)
+# PR aanmaken naar main
+gh pr create --title "feat: omschrijving" --base main
 
-# Release naar productie
-# PR develop → main + versie bumpen in pwa/js/version.js en pwa/sw.js
-# Merge → CI deployt naar /BudgetApp/ (productie)
-# CI deployt ook backend naar Azure als app/backend/ gewijzigd is
+# CI draait tests → goedkeuren → merge
+# Automatisch: deploy PWA + backend (als app/backend/ gewijzigd is)
+# Automatisch: branch verwijderd na merge
 ```
+
+**Nooit direct naar `main` pushen** — altijd via PR.
 
 ---
 
@@ -169,17 +175,21 @@ Handmatig bijwerken bij elke release via PR.
 
 ## Tests
 
-76 unit tests voor de PWA-logica (Jest + fake-indexeddb).
+76 unit tests voor de PWA-logica (Jest + fake-indexeddb) + 61 backend tests (xUnit + WebApplicationFactory).
 
 ```bash
 cd BudgetApp          # root van de repo
 npm install           # eenmalig
-npm test              # alle tests
+npm test              # alle PWA tests
 npm run coverage      # met coverage-rapport
+
+# Backend tests
+dotnet test app/backend.Tests/Prospero.Api.Tests.csproj -v minimal
+dotnet test app/backend.Tests/Prospero.Api.Tests.csproj /p:CollectCoverage=true  # met coverage check (threshold 75%)
 ```
 
-Coverage: `pwa/js/format.js` en `pwa/js/db.js`.  
-Angular-tests in `app/frontend/` draaien apart via `ng test`.
+PWA coverage: `pwa/js/format.js` en `pwa/js/db.js`.  
+Backend coverage: alle endpoints en services, uitgezonderd EF Core migrations en gegenereerde bestanden.
 
 ---
 

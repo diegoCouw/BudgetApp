@@ -1,6 +1,6 @@
 // Auto-updated by GitHub Actions — do not edit by hand.
 // Must match APP_VERSION in js/version.js.
-const CACHE = 'budget-1.2.0';
+const CACHE = 'budget-1.3.0';
 
 const ASSETS = [
   './',
@@ -52,4 +52,27 @@ self.addEventListener('fetch', e => {
 // Triggered by app.js when user confirms the update
 self.addEventListener('message', e => {
   if (e.data === 'skipWaiting') self.skipWaiting();
+});
+
+self.addEventListener('push', e => {
+  const data = e.data?.json() ?? { title: 'Prospero', body: 'Nieuwe bankactiviteit' };
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: './icons/icon.svg',
+      data: { url: './#bank' }
+    })
+  );
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: 'window' }).then(list => {
+      for (const c of list) {
+        if (c.url.includes('/BudgetApp/') && 'focus' in c) return c.focus();
+      }
+      if (clients.openWindow) return clients.openWindow('./');
+    })
+  );
 });

@@ -6,6 +6,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 {
     public DbSet<TransactionEntity> Transactions => Set<TransactionEntity>();
     public DbSet<BankSessionEntity> BankSessions => Set<BankSessionEntity>();
+    public DbSet<PushSubscriptionEntity> PushSubscriptions => Set<PushSubscriptionEntity>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {

@@ -62,6 +62,12 @@ builder.Services.AddSingleton<TokenService>();
 builder.Services.AddSingleton<BankSessionStore>();
 builder.Services.AddHttpClient<EnableBankingService>();
 
+var vapidPublicKey  = builder.Configuration["Vapid:PublicKey"]  ?? "";
+var vapidPrivateKey = builder.Configuration["Vapid:PrivateKey"] ?? "";
+var vapidSubject    = builder.Configuration["Vapid:Subject"]    ?? "https://diegocouw.github.io/BudgetApp/";
+builder.Services.AddSingleton<IPushSender>(new DefaultPushSender(vapidPublicKey, vapidPrivateKey, vapidSubject));
+builder.Services.AddScoped<PushNotificationService>();
+
 // ── CORS (Angular dev server) ─────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
@@ -128,6 +134,7 @@ if (app.Environment.IsDevelopment())
 app.MapAuthEndpoints();
 app.MapHealthEndpoints();
 app.MapBankEndpoints();
+app.MapPushEndpoints();
 
 app.Run();
 

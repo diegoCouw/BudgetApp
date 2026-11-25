@@ -35,6 +35,17 @@ jobs:
           echo "saved=$SAVED" >> "$GITHUB_OUTPUT"
           echo "Opgeslagen: $SAVED nieuwe transacties"
 
+      - name: Push notificatie sturen bij nieuwe transacties
+        if: steps.sync.outputs.saved > 0
+        run: |
+          SAVED="${{ steps.sync.outputs.saved }}"
+          BODY="$SAVED nieuwe transactie(s) wachten op categorisatie"
+          RESPONSE=$(curl -sf -X POST "${{ secrets.BACKEND_URL }}/push/notify" \
+            -H "Authorization: Bearer ${{ steps.auth.outputs.token }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"title\": \"Prospero\", \"body\": \"$BODY\"}")
+          echo "Push resultaat: $RESPONSE"
+
       - name: Samenvatting tonen
         run: |
           echo "### Bank sync klaar" >> "$GITHUB_STEP_SUMMARY"

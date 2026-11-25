@@ -18,6 +18,7 @@ public class BrokenConfigTestWebApp : TestWebApp
         base.ConfigureWebHost(builder);
         // .NET config skips null values and falls back to previous providers.
         // Clear all accumulated sources and rebuild without the key to truly remove it.
+        // De DbContext-registratie wordt door de base class via ConfigureServices gezet en hoeft hier niet.
         builder.ConfigureAppConfiguration((_, config) =>
         {
             config.Sources.Clear();
@@ -32,7 +33,6 @@ public class BrokenConfigTestWebApp : TestWebApp
                 ["EnableBanking:CallbackUrl"] = "http://localhost/bank/callback",
                 ["EnableBanking:AspspName"] = "BBVA",
                 ["EnableBanking:AspspCountry"] = "BE",
-                ["ConnectionStrings:Neon"] = "Data Source=testdb;Mode=Memory;Cache=Shared",
             };
             entries.Remove(_missingKey);
             config.AddInMemoryCollection(entries);
