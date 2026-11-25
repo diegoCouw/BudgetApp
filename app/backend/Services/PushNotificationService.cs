@@ -1,11 +1,12 @@
-using Lib.Net.Http.WebPush;
-using Lib.Net.Http.WebPush.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Prospero.Api.Data;
 
 namespace Prospero.Api.Services;
 
-public class PushNotificationService(IConfiguration config, IServiceScopeFactory scopeFactory, ILogger<PushNotificationService> log)
+public class PushNotificationService(
+    IServiceScopeFactory scopeFactory,
+    IPushSender sender,
+    ILogger<PushNotificationService> log)
 {
     public async Task<bool> SaveSubscriptionAsync(PushSubscribeRequest req)
     {
@@ -41,24 +42,11 @@ public class PushNotificationService(IConfiguration config, IServiceScopeFactory
 
     public async Task<int> SendNotificationAsync(string title, string body)
     {
-        var privateKey = config["Vapid:PrivateKey"];
-        var publicKey = config["Vapid:PublicKey"];
-        var subject = config["Vapid:Subject"] ?? "https://diegocouw.github.io/BudgetApp/";
-
-        if (string.IsNullOrEmpty(privateKey) || string.IsNullOrEmpty(publicKey))
-        {
-            log.LogWarning("VAPID keys niet geconfigureerd — push notificatie overgeslagen");
-            return 0;
-        }
-
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var subscriptions = await db.PushSubscriptions.ToListAsync();
 
         if (subscriptions.Count == 0) return 0;
-
-        var vapidAuthentication = new VapidAuthentication(publicKey, privateKey) { Subject = subject };
-        var pushClient = new PushServiceClient { DefaultAuthentication = vapidAuthentication };
 
         var payload = System.Text.Json.JsonSerializer.Serialize(new { title, body });
         int sent = 0;
@@ -67,27 +55,13 @@ public class PushNotificationService(IConfiguration config, IServiceScopeFactory
         {
             try
             {
-                var subscription = new PushSubscription
-                {
-                    Endpoint = sub.Endpoint,
-                    Keys = new Dictionary<string, string>
-                    {
-                        ["p256dh"] = sub.P256dh,
-                        ["auth"] = sub.Auth
-                    }
-                };
-                await pushClient.RequestPushMessageDeliveryAsync(subscription, new PushMessage(payload)
-                {
-                    TimeToLive = 86400
-                });
+                await sender.SendAsync(sub.Endpoint, sub.P256dh, sub.Auth, payload);
                 sent++;
             }
             catch (Exception ex)
             {
                 log.LogError(ex, "Push notificatie sturen mislukt");
-                // 410 Gone of 404 = verlopen subscription verwijderen
-                if (ex.Message.Contains("410") || ex.Message.Contains("404") ||
-                    (ex is PushServiceClientException pex && ((int)pex.StatusCode == 410 || (int)pex.StatusCode == 404)))
+                if (ex.Message.Contains("410") || ex.Message.Contains("404"))
                 {
                     db.PushSubscriptions.Remove(sub);
                     await db.SaveChangesAsync();

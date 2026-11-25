@@ -21,10 +21,9 @@ public class TestWebApp : WebApplicationFactory<Program>
     public const string JwtKey = "test-signing-key-must-be-32-chars!!";
     public const string JwtIssuer = "prospero";
 
-    private const string TestDbConnStr = "Data Source=testdb;Mode=Memory;Cache=Shared";
-
-    // Houd een open verbinding zodat de named in-memory SQLite database "testdb" niet verdwijnt
-    private readonly SqliteConnection _keepAlive = new(TestDbConnStr);
+    // Unieke database per instantie — voorkomt conflicten als meerdere factory-instanties tegelijk draaien
+    private readonly string _dbConnStr = $"Data Source=testdb-{Guid.NewGuid():N};Mode=Memory;Cache=Shared";
+    private SqliteConnection? _keepAlive;
 
     private static readonly Dictionary<string, string?> TestConfig = new()
     {
@@ -41,11 +40,21 @@ public class TestWebApp : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        // Open vóór de host start zodat testdb in leven blijft tot Dispose
+        // Open vóór de host start zodat de unieke in-memory database in leven blijft tot Dispose
+        _keepAlive = new SqliteConnection(_dbConnStr);
         _keepAlive.Open();
         // "Testing" activeert de SQLite-tak in Program.cs — geen Npgsql provider conflict
         builder.UseEnvironment("Testing");
         builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(TestConfig));
+        builder.ConfigureServices(services =>
+        {
+            // Vervang de DbContext-registratie van Program.cs door een unieke in-memory SQLite per instantie.
+            // ConfigureAppConfiguration is te laat voor Program.cs in het minimal API model,
+            // maar ConfigureServices draait wél na Program.cs en kan de registratie overschrijven.
+            var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
+            if (descriptor != null) services.Remove(descriptor);
+            services.AddDbContext<AppDbContext>(opt => opt.UseSqlite(_dbConnStr));
+        });
     }
 
     protected override IHost CreateHost(IHostBuilder builder)
@@ -54,8 +63,7 @@ public class TestWebApp : WebApplicationFactory<Program>
 
         using var scope = host.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        // Verwijder tabellen uit een vorige run en maak opnieuw aan voor een schone staat
-        db.Database.EnsureDeleted();
+        // Unieke database per instantie — geen EnsureDeleted nodig, altijd leeg bij aanmaak
         db.Database.EnsureCreated();
 
         return host;
@@ -63,7 +71,7 @@ public class TestWebApp : WebApplicationFactory<Program>
 
     protected override void Dispose(bool disposing)
     {
-        _keepAlive.Close();
+        _keepAlive?.Close();
         base.Dispose(disposing);
     }
 
