@@ -241,7 +241,7 @@ version.js → format.js → db.js → render.js → modal.js → bank.js → ap
 Versie staat in `pwa/js/version.js` (`APP_VERSION`) en `pwa/sw.js` (cache-naam `budget-{versie}`).  
 **Bij elke release handmatig bijwerken in beide bestanden.**
 
-Huidig: `1.3.0`
+Huidig: `1.4.0`
 
 | Increment | Wanneer |
 |---|---|
@@ -313,7 +313,7 @@ gh pr create --title "feat: omschrijving" --body $body --base main
 
 ## Tests
 
-76 unit tests voor de PWA-logica (Jest + fake-indexeddb) + 61 backend tests (xUnit + WebApplicationFactory).
+89 unit tests voor de PWA-logica (Jest + fake-indexeddb) + 61 backend tests (xUnit + WebApplicationFactory).
 
 ```bash
 cd BudgetApp   # root van de repo
@@ -343,18 +343,10 @@ Backend coverage: alle endpoints en services, uitgezonderd EF Core migrations, g
 ## TODO-lijst (bijwerken bij elke sessie)
 
 ### In uitvoering
-- **Dagelijkse automatische bank sync** — PR #53 open (feat/daily-bank-sync)
-- **Push notificaties** — PR open (feat/push-notifications) — wacht op VAPID setup door Diego
-
-### Te doen na merge push-notifications PR
-Vereist eenmalige setup door Diego:
-1. `npx web-push generate-vapid-keys` uitvoeren
-2. Public key invullen in `pwa/js/bank.js` → `VAPID_PUBLIC_KEY`
-3. Azure secret `vapid-private-key` instellen + container herstarten
+- **What's new scherm** — PR #55 open (feat/whats-new)
 
 ### Te doen — geprioriteerd
-1. **What's new scherm** — na app-update kort venster met nieuwe features, enkel als er nieuws is
-2. **Service health warnings** — in-app waarschuwing als bank consent vervalt, secrets oud zijn
+1. **Service health warnings** — in-app waarschuwing als bank consent vervalt, secrets oud zijn
 3. **Maandoverzicht** — per categorie uitklappen + totaalsom, maaltijdcheques apart
 4. **Maandrapport** — einde maand overzicht: top 3 uitgaven, gespaarde bedrag, vergelijking vorige maand
 5. **Transactie opsplitsen** — één transactie onder meerdere categorieën
@@ -387,6 +379,7 @@ Vereist eenmalige setup door Diego:
 - ✅ Code coverage threshold — PR faalt als backend line coverage < 75% (coverlet.msbuild)
 - ✅ Dagelijkse automatische bank sync — GitHub Actions cron 06:00 UTC (PR #53)
 - ✅ Push notificaties — Web Push VAPID via Lib.Net.Http.WebPush, PWA bank tab knop (v1.3.0)
+- ✅ What's new scherm — modal bij app-update, versievergelijking in localStorage (v1.4.0)
 
 ---
 

@@ -76,8 +76,34 @@ function esc(s) {
     .replace(/"/g, '&quot;');
 }
 
+// ── What's New data ───────────────────────────────────────────────────────────
+var WHATS_NEW = {
+  '1.4.0': [
+    { emoji: '🔔', text: 'Dagelijkse push notificaties bij nieuwe banktransacties' },
+    { emoji: '🔄', text: 'Automatische dagelijkse bank sync om 06:00' },
+  ],
+};
+
+function getWhatsNew(version) {
+  return WHATS_NEW[version] || null;
+}
+
+function shouldShowWhatsNew(currentVersion, seenVersion) {
+  if (!getWhatsNew(currentVersion)) return false;
+  if (!seenVersion) return true;
+  if (seenVersion === currentVersion) return false;
+  var cur  = currentVersion.split('.').map(Number);
+  var seen = seenVersion.split('.').map(Number);
+  for (var i = 0; i < 3; i++) {
+    if ((cur[i] || 0) > (seen[i] || 0)) return true;
+    if ((cur[i] || 0) < (seen[i] || 0)) return false;
+  }
+  return false;
+}
+
 // Node.js / Jest exports — no effect in browser (module is undefined there)
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { CATS, CMAP, _userCats: function() { return _userCats; },
-    getCatList, getCatMap, catById, CAT_COLORS, MNL, eur, ymKey, todayISO, fmtDay, esc };
+    getCatList, getCatMap, catById, CAT_COLORS, MNL, eur, ymKey, todayISO, fmtDay, esc,
+    WHATS_NEW, getWhatsNew, shouldShowWhatsNew };
 }
