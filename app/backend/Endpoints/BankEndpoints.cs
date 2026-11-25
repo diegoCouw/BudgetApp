@@ -70,6 +70,11 @@ public static class BankEndpoints
                 return Results.Problem("Bank sessie verlopen. Doe opnieuw /bank/connect.", statusCode: 401);
             }
 
+            if (from is not null && !DateOnly.TryParse(from, out _))
+                return Results.BadRequest(new { error = $"Ongeldig datumformaat voor 'from': {from}" });
+            if (to is not null && !DateOnly.TryParse(to, out _))
+                return Results.BadRequest(new { error = $"Ongeldig datumformaat voor 'to': {to}" });
+
             var dateFrom = from is not null ? DateOnly.Parse(from) : DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
             var dateTo = to is not null ? DateOnly.Parse(to) : DateOnly.FromDateTime(DateTime.UtcNow);
 
@@ -78,60 +83,86 @@ public static class BankEndpoints
 
             int saved = 0, skipped = 0;
 
-            foreach (var accountId in session.AccountIds)
+            try
             {
-                var txs = await bank.GetTransactionsAsync(session.SessionId, accountId, dateFrom, dateTo);
-                foreach (var t in txs)
+                foreach (var accountId in session.AccountIds)
                 {
-                    if (await db.Transactions.AnyAsync(x => x.ExternalId == t.Id))
+                    var txs = await bank.GetTransactionsAsync(session.SessionId, accountId, dateFrom, dateTo);
+                    foreach (var t in txs)
                     {
-                        skipped++;
-                        continue;
+                        if (await db.Transactions.AnyAsync(x => x.ExternalId == t.Id))
+                        {
+                            skipped++;
+                            continue;
+                        }
+                        db.Transactions.Add(new TransactionEntity
+                        {
+                            ExternalId = t.Id,
+                            AccountId = accountId,
+                            Amount = t.Amount,
+                            Currency = t.Currency,
+                            Direction = t.Direction,
+                            BookingDate = t.BookingDate,
+                            Description = t.Description
+                        });
+                        saved++;
                     }
-                    db.Transactions.Add(new TransactionEntity
-                    {
-                        ExternalId = t.Id,
-                        AccountId = accountId,
-                        Amount = t.Amount,
-                        Currency = t.Currency,
-                        Direction = t.Direction,
-                        BookingDate = t.BookingDate,
-                        Description = t.Description
-                    });
-                    saved++;
                 }
+
+                await db.SaveChangesAsync();
+                log.LogInformation("Bank sync klaar — {Saved} opgeslagen, {Skipped} overgeslagen", saved, skipped);
+                return Results.Ok(new { from = dateFrom.ToString("yyyy-MM-dd"), to = dateTo.ToString("yyyy-MM-dd"), saved, skipped });
             }
-
-            await db.SaveChangesAsync();
-
-            log.LogInformation("Bank sync klaar — {Saved} opgeslagen, {Skipped} overgeslagen", saved, skipped);
-            return Results.Ok(new { from = dateFrom.ToString("yyyy-MM-dd"), to = dateTo.ToString("yyyy-MM-dd"), saved, skipped });
+            catch (Exception ex)
+            {
+                log.LogError(ex, "Bank sync mislukt voor {From} → {To}", dateFrom, dateTo);
+                return Results.Problem(ex.Message, statusCode: 502);
+            }
         })
         .RequireAuthorization()
         .WithName("BankSync");
 
-        app.MapGet("/transactions", async (AppDbContext db, string? from, string? to, string? category) =>
+        app.MapGet("/transactions", async (AppDbContext db, ILoggerFactory logFactory, string? from, string? to, string? category) =>
         {
-            var query = db.Transactions.AsQueryable();
-
-            if (from is not null) query = query.Where(t => t.BookingDate >= DateOnly.Parse(from));
-            if (to is not null) query = query.Where(t => t.BookingDate <= DateOnly.Parse(to));
-            if (category is not null) query = query.Where(t => t.Category == category);
-
-            var txs = await query.OrderByDescending(t => t.BookingDate).Select(t => new
+            var log = logFactory.CreateLogger("Bank");
+            try
             {
-                id = t.Id,
-                external_id = t.ExternalId,
-                account_id = t.AccountId,
-                amount = t.Amount,
-                currency = t.Currency,
-                type = t.Direction == "CRDT" ? "inkomst" : "uitgave",
-                date = t.BookingDate.ToString("yyyy-MM-dd"),
-                description = t.Description,
-                category = t.Category
-            }).ToListAsync();
+                var query = db.Transactions.AsQueryable();
 
-            return Results.Ok(new { count = txs.Count, transactions = txs });
+                if (from is not null)
+                {
+                    if (!DateOnly.TryParse(from, out var dateFrom))
+                        return Results.BadRequest(new { error = $"Ongeldig datumformaat voor 'from': {from}" });
+                    query = query.Where(t => t.BookingDate >= dateFrom);
+                }
+                if (to is not null)
+                {
+                    if (!DateOnly.TryParse(to, out var dateTo))
+                        return Results.BadRequest(new { error = $"Ongeldig datumformaat voor 'to': {to}" });
+                    query = query.Where(t => t.BookingDate <= dateTo);
+                }
+                if (category is not null) query = query.Where(t => t.Category == category);
+
+                var txs = await query.OrderByDescending(t => t.BookingDate).Select(t => new
+                {
+                    id = t.Id,
+                    external_id = t.ExternalId,
+                    account_id = t.AccountId,
+                    amount = t.Amount,
+                    currency = t.Currency,
+                    type = t.Direction == "CRDT" ? "inkomst" : "uitgave",
+                    date = t.BookingDate.ToString("yyyy-MM-dd"),
+                    description = t.Description,
+                    category = t.Category
+                }).ToListAsync();
+
+                return Results.Ok(new { count = txs.Count, transactions = txs });
+            }
+            catch (Exception ex)
+            {
+                log.LogError(ex, "Transacties ophalen mislukt");
+                return Results.Problem(ex.Message, statusCode: 500);
+            }
         })
         .RequireAuthorization()
         .WithName("GetTransactions");
@@ -139,16 +170,24 @@ public static class BankEndpoints
         app.MapPatch("/transactions/{id:int}/category", async (int id, CategoryRequest req, AppDbContext db, ILoggerFactory logFactory) =>
         {
             var log = logFactory.CreateLogger("Bank");
-            var tx = await db.Transactions.FindAsync(id);
-            if (tx is null)
+            try
             {
-                log.LogWarning("Categorie-update voor onbekende transactie {Id}", id);
-                return Results.NotFound();
+                var tx = await db.Transactions.FindAsync(id);
+                if (tx is null)
+                {
+                    log.LogWarning("Categorie-update voor onbekende transactie {Id}", id);
+                    return Results.NotFound();
+                }
+                tx.Category = req.Category;
+                await db.SaveChangesAsync();
+                log.LogInformation("Transactie {Id} gecategoriseerd als {Category}", id, req.Category ?? "(leeg)");
+                return Results.Ok(new { id, category = tx.Category });
             }
-            tx.Category = req.Category;
-            await db.SaveChangesAsync();
-            log.LogInformation("Transactie {Id} gecategoriseerd als {Category}", id, req.Category ?? "(leeg)");
-            return Results.Ok(new { id, category = tx.Category });
+            catch (Exception ex)
+            {
+                log.LogError(ex, "Categorie opslaan mislukt voor transactie {Id}", id);
+                return Results.Problem(ex.Message, statusCode: 500);
+            }
         })
         .RequireAuthorization()
         .WithName("SetCategory");

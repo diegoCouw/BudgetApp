@@ -45,11 +45,19 @@ jobs:
 
       - if: matrix.type == 'backend-unit'
         name: Unit tests draaien
-        run: dotnet test app/backend.Tests/Prospero.Api.Tests.csproj -v minimal --filter "FullyQualifiedName~.Unit."
+        run: dotnet test app/backend.Tests/Prospero.Api.Tests.csproj -v minimal --filter "FullyQualifiedName~.Unit." --collect:"XPlat Code Coverage" --results-directory coverage/
 
       - if: matrix.type == 'backend-integration'
         name: Integration tests draaien
-        run: dotnet test app/backend.Tests/Prospero.Api.Tests.csproj -v minimal --filter "FullyQualifiedName~.Integration."
+        run: dotnet test app/backend.Tests/Prospero.Api.Tests.csproj -v minimal --filter "FullyQualifiedName~.Integration." --collect:"XPlat Code Coverage" --results-directory coverage/
+
+      - if: matrix.type != 'pwa'
+        name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.type }}
+          path: coverage/
+          if-no-files-found: ignore
 
   # ── Aggregator: vereist door branch protection rule ───────────────────────
   tests:
