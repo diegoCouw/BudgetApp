@@ -142,7 +142,8 @@ async function renderBankMain() {
     '</div>' +
     '<div class="bank-cat-filter" id="bank-cat-filter"></div>' +
     '<div id="bank-tx-list"></div>' +
-    '<div id="bank-load-more"></div>';
+    '<div id="bank-load-more"></div>' +
+    '<div class="bank-push-section" id="bank-push-section"></div>';
 
   document.getElementById('bank-connect-btn').addEventListener('click', doConnect);
   document.getElementById('bank-sync-btn').addEventListener('click', doSync);
@@ -155,6 +156,7 @@ async function renderBankMain() {
 
   _bankPage = 1;
   await loadBankTxs();
+  renderPushSection(document.getElementById('bank-push-section'));
 }
 
 async function doConnect() {
@@ -370,4 +372,89 @@ async function setCategory(txId, cat, labelEl) {
     }
   }
   renderBankCatFilter();
+}
+
+// ── Push notificaties ─────────────────────────────────────────────────────
+// VAPID_PUBLIC_KEY: genereer met `npx web-push generate-vapid-keys` en
+// stel in als Azure secret vapid-private-key + hier de public key invullen.
+var VAPID_PUBLIC_KEY = '';
+
+function _urlBase64ToUint8Array(base64) {
+  var padding = '='.repeat((4 - base64.length % 4) % 4);
+  var b64 = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+  var raw = window.atob(b64);
+  return new Uint8Array(Array.from(raw).map(function (c) { return c.charCodeAt(0); }));
+}
+
+async function renderPushSection(container) {
+  if (!container) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    container.innerHTML = '<p class="bank-push-unsupported">Push notificaties worden niet ondersteund door deze browser.</p>';
+    return;
+  }
+  if (!VAPID_PUBLIC_KEY) {
+    container.innerHTML = '';
+    return;
+  }
+  try {
+    var reg = await navigator.serviceWorker.ready;
+    var existing = await reg.pushManager.getSubscription();
+    var permission = Notification.permission;
+    if (permission === 'denied') {
+      container.innerHTML = '<p class="bank-push-unsupported">Notificaties geblokkeerd in browserinstellingen.</p>';
+    } else if (existing) {
+      container.innerHTML = '<button class="btn-ghost bank-push-btn" id="bank-push-off-btn">🔕 Notificaties uitschakelen</button>';
+      document.getElementById('bank-push-off-btn').addEventListener('click', unsubscribePush);
+    } else {
+      container.innerHTML = '<button class="btn-ghost bank-push-btn" id="bank-push-on-btn">🔔 Dagelijkse notificaties inschakelen</button>';
+      document.getElementById('bank-push-on-btn').addEventListener('click', subscribePush);
+    }
+  } catch (_) {
+    container.innerHTML = '';
+  }
+}
+
+async function subscribePush() {
+  try {
+    var permission = await Notification.requestPermission();
+    if (permission !== 'granted') return;
+    var reg = await navigator.serviceWorker.ready;
+    var subscription = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: _urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+    var json = subscription.toJSON();
+    var resp = await apiCall('POST', '/push/subscribe', {
+      endpoint: json.endpoint,
+      p256dh: json.keys.p256dh,
+      auth: json.keys.auth
+    });
+    if (resp && resp.ok) {
+      var container = document.getElementById('bank-push-section');
+      if (container) {
+        container.innerHTML = '<button class="btn-ghost bank-push-btn" id="bank-push-off-btn">🔕 Notificaties uitschakelen</button>';
+        document.getElementById('bank-push-off-btn').addEventListener('click', unsubscribePush);
+      }
+    }
+  } catch (e) {
+    console.error('Push subscribe mislukt:', e);
+  }
+}
+
+async function unsubscribePush() {
+  try {
+    var reg = await navigator.serviceWorker.ready;
+    var subscription = await reg.pushManager.getSubscription();
+    if (subscription) {
+      await apiCall('DELETE', '/push/subscribe', { endpoint: subscription.endpoint });
+      await subscription.unsubscribe();
+    }
+    var container = document.getElementById('bank-push-section');
+    if (container) {
+      container.innerHTML = '<button class="btn-ghost bank-push-btn" id="bank-push-on-btn">🔔 Dagelijkse notificaties inschakelen</button>';
+      document.getElementById('bank-push-on-btn').addEventListener('click', subscribePush);
+    }
+  } catch (e) {
+    console.error('Push unsubscribe mislukt:', e);
+  }
 }

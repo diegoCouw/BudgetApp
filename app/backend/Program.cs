@@ -61,6 +61,7 @@ else
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddSingleton<BankSessionStore>();
 builder.Services.AddHttpClient<EnableBankingService>();
+builder.Services.AddScoped<PushNotificationService>();
 
 // ── CORS (Angular dev server) ─────────────────────────────────────────────
 builder.Services.AddCors(options =>
@@ -128,6 +129,7 @@ if (app.Environment.IsDevelopment())
 app.MapAuthEndpoints();
 app.MapHealthEndpoints();
 app.MapBankEndpoints();
+app.MapPushEndpoints();
 
 app.Run();
 
