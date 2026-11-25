@@ -315,13 +315,14 @@ Coverage: `pwa/js/format.js` en `pwa/js/db.js`.
 ## TODO-lijst (bijwerken bij elke sessie)
 
 ### In uitvoering
-*(geen)*
+- **Dagelijkse automatische bank sync** — PR #53 open (feat/daily-bank-sync)
+- **Push notificaties** — PR in voorbereiding (feat/push-notifications)
 
 ### Te doen — geprioriteerd
 1. **Error handling & logging** — try-catch op alle endpoints, gestructureerde logging (Serilog), raadpleegbaar in Azure + browser
 2. **What's new scherm** — na app-update kort venster met nieuwe features, enkel als er nieuws is
 3. **Service health warnings** — in-app waarschuwing als bank consent vervalt, secrets oud zijn
-4. **Dagelijkse automatische bank sync** — cron job elke ochtend
+4. ~~**Dagelijkse automatische bank sync**~~ — zie "In uitvoering"
 5. **Push notificaties** — melding als nieuwe betalingen klaarstaan om te categoriseren
 6. **Maandoverzicht** — per categorie uitklappen + totaalsom, maaltijdcheques apart
 7. **Maandrapport** — einde maand overzicht: top 3 uitgaven, gespaarde bedrag, vergelijking vorige maand
@@ -431,6 +432,7 @@ Push naar main (met wijzigingen in app/backend/)
 | `AZURE_CONTAINERAPP_NAME` | `prospero-api` |
 | `AZURE_LOCATION` | `northeurope` |
 | `BACKEND_URL` | Backend URL |
+| `BACKEND_PASSWORD` | Inlogwachtwoord voor de backend (gebruikt door dagelijkse sync job) |
 
 ### Kosten
 

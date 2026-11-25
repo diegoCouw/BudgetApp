@@ -1,0 +1,41 @@
+name: Dagelijkse bank sync
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # 06:00 UTC = 07:00 CET / 08:00 CEST
+  workflow_dispatch:        # manueel starten voor testen
+
+jobs:
+  sync:
+    name: Bank sync
+    runs-on: ubuntu-latest
+    steps:
+      - name: JWT ophalen
+        id: auth
+        run: |
+          RESPONSE=$(curl -sf -X POST "${{ secrets.BACKEND_URL }}/auth/login" \
+            -H "Content-Type: application/json" \
+            -d "{\"password\": \"${{ secrets.BACKEND_PASSWORD }}\"}")
+          TOKEN=$(echo "$RESPONSE" | jq -r '.token')
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "Login mislukt: $RESPONSE"
+            exit 1
+          fi
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Bank sync uitvoeren
+        id: sync
+        run: |
+          FROM=$(date -u -d "yesterday" +%Y-%m-%d 2>/dev/null || date -u -v-1d +%Y-%m-%d)
+          TO=$(date -u +%Y-%m-%d)
+          RESPONSE=$(curl -sf "${{ secrets.BACKEND_URL }}/bank/sync?from=$FROM&to=$TO" \
+            -H "Authorization: Bearer ${{ steps.auth.outputs.token }}")
+          echo "Sync resultaat ($FROM → $TO): $RESPONSE"
+          SAVED=$(echo "$RESPONSE" | jq '.saved // 0')
+          echo "saved=$SAVED" >> "$GITHUB_OUTPUT"
+          echo "Opgeslagen: $SAVED nieuwe transacties"
+
+      - name: Samenvatting tonen
+        run: |
+          echo "### Bank sync klaar" >> "$GITHUB_STEP_SUMMARY"
+          echo "Opgeslagen: ${{ steps.sync.outputs.saved }} nieuwe transacties" >> "$GITHUB_STEP_SUMMARY"
