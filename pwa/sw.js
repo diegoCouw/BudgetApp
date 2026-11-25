@@ -1,6 +1,6 @@
 // Auto-updated by GitHub Actions — do not edit by hand.
 // Must match APP_VERSION in js/version.js.
-const CACHE = 'budget-1.2.0';
+const CACHE = 'budget-1.3.0';
 
 const ASSETS = [
   './',

@@ -30,4 +30,12 @@ public class BankSessionStore(IServiceScopeFactory scopeFactory)
         });
         db.SaveChanges();
     }
+
+    public void Clear()
+    {
+        using var scope = scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.BankSessions.RemoveRange(db.BankSessions);
+        db.SaveChanges();
+    }
 }

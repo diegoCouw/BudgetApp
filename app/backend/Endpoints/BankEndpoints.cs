@@ -120,6 +120,14 @@ public static class BankEndpoints
         })
         .RequireAuthorization()
         .WithName("SetCategory");
+
+        app.MapDelete("/bank/session", (BankSessionStore store) =>
+        {
+            store.Clear();
+            return Results.Ok(new { message = "Bankverbinding verbroken" });
+        })
+        .RequireAuthorization()
+        .WithName("BankDisconnect");
     }
 }
 

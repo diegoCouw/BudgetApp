@@ -96,6 +96,7 @@ Zie [AZURE.md](AZURE.md) voor de volledige setup en kostenoverzicht.
 | `GET /bank/sync` | JWT | Haalt nieuwe transacties op en slaat ze op in database |
 | `GET /transactions` | JWT | Geeft opgeslagen transacties terug (filter: `from`, `to`, `category`) |
 | `PATCH /transactions/{id}/category` | JWT | Stelt categorie in op een transactie |
+| `DELETE /bank/session` | JWT | Verbreekt bankverbinding — verwijdert sessie uit database |
 
 Secrets (JWT key, wachtwoord hash, Enable Banking private key, Neon connection string) staan uitsluitend als Azure Container App secrets — nooit in code of git.
 
