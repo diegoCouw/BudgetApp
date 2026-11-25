@@ -1307,6 +1307,25 @@ function _backBtn(target) {
   return '<button class="btn-ghost" id="back-btn" style="width:auto;padding:8px 14px;margin:0 0 16px;">← Terug</button>';
 }
 
+// ── What's new dialog ─────────────────────────────────────────────────────────
+function openWhatsNew(version, items) {
+  document.getElementById('mcontent').innerHTML =
+    '<div style="text-align:center;font-size:36px;margin-bottom:4px;">🎉</div>' +
+    '<h2 class="mtitle">Nieuw in versie ' + esc(version) + '</h2>' +
+    '<ul style="list-style:none;padding:0;margin:0 0 24px;">' +
+      items.map(function (item) {
+        return '<li style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);">' +
+          '<span style="font-size:24px;min-width:32px;text-align:center;">' + item.emoji + '</span>' +
+          '<span style="font-size:14px;line-height:1.4;">' + esc(item.text) + '</span>' +
+        '</li>';
+      }).join('') +
+    '</ul>' +
+    '<button class="btn-primary" id="whats-new-ok">Top, begrepen!</button>';
+
+  document.getElementById('whats-new-ok').addEventListener('click', closeModal);
+  showModal();
+}
+
 // ── Swipe-to-dismiss ──────────────────────────────────────────────────────────
 (function () {
   var startY = 0;
