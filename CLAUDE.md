@@ -51,7 +51,7 @@ BudgetApp/
 │       ├── Services/
 │       │   ├── TokenService.cs       JWT generatie (HS256, 60 min)
 │       │   ├── EnableBankingService.cs  Enable Banking API-wrapper (RSA-signed JWTs)
-│       │   └── BankSessionStore.cs   In-memory singleton — houdt actieve bank sessie bij
+│       │   └── BankSessionStore.cs   DB-backed sessie store — leest/schrijft actieve bank sessie via AppDbContext
 │       ├── Data/
 │       │   ├── AppDbContext.cs       EF Core DbContext
 │       │   └── Entities.cs          TransactionEntity, BankSessionEntity
@@ -170,7 +170,7 @@ Alle secrets staan uitsluitend als **Azure Container App secrets**. Bij wijzigin
 
 3. GET /bank/callback?code=...  →  EnableBankingService.CreateSessionAsync()
    - Wisselt OAuth2 code in voor sessie-ID + rekening-UIDs
-   - Sessie geldig 90 dagen, opgeslagen in BankSessionStore (in-memory)
+   - Sessie geldig 90 dagen, opgeslagen in BankSessionStore (database-backed via BankSessions tabel)
 
 4. GET /bank/sync?from=...&to=...  →  EnableBankingService.GetTransactionsAsync()
    - Haalt transacties op per rekening
@@ -178,7 +178,7 @@ Alle secrets staan uitsluitend als **Azure Container App secrets**. Bij wijzigin
    - Dubbels worden overgeslagen via ExternalId check
 ```
 
-**Let op:** BankSessionStore is in-memory. Bij container-herstart is de sessie weg en moet de gebruiker opnieuw koppelen. Migratie naar database-opslag is wenselijk (zit in backlog).
+**Let op:** BankSessionStore is database-backed (opgeslagen in de BankSessions tabel). Sessies blijven bewaard na container-herstart.
 
 ---
 
@@ -504,12 +504,12 @@ Bij elke deploy voert de backend automatisch `db.Database.Migrate()` uit. Nieuwe
 
 ## Bekende beperkingen / gotchas
 
-- **BankSessionStore is in-memory**: sessie verdwijnt bij container-herstart → gebruiker moet opnieuw koppelen
+- **BankSessionStore is database-backed**: sessie blijft bestaan na container-herstart (opgeslagen in BankSessions tabel)
 - **BBVA sandbox 422**: geeft 422 bij datumbereiken > ~60 dagen — afgehandeld door fout te loggen en lege lijst terug te geven
 - **Neon connection string**: MOET key-value formaat zijn (`Host=...;Database=...`), NIET URI-formaat (`postgresql://...`)
 - **Azure Container Apps**: secrets vereisen een container-herstart om van kracht te worden
 - **Cold start**: backend schaalt naar nul bij inactiviteit — eerste aanroep duurt ~3 seconden
-- **BankSessionEntity**: staat al in de database maar sessies worden nog in-memory bewaard (BankSessionStore) — migratie gewenst
+- **BankSessionEntity**: database-opslag volledig actief via BankSessionStore (geen in-memory meer)
 - **Neon direct endpoint**: gebruik altijd `ep-broad-base-bg7bdcke.c-9.eu-central-1.aws.neon.tech` (zonder `-pooler`) voor EF Core migrations
 
 ---
