@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, develop]
   pull_request:
-    branches: [main, develop]
+    branches: [main]
 
 jobs:
   # ── Tests ──────────────────────────────────────────────────────────────────
@@ -24,24 +24,6 @@ jobs:
 
       - name: Tests draaien
         run: npm test
-
-  # ── Deploy preview (develop → /dev/) ──────────────────────────────────────
-  deploy-preview:
-    name: Deploy preview
-    needs: test
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: pwa
-          destination_dir: dev
-          keep_files: true
 
   # ── Deploy productie (main → /) ────────────────────────────────────────────
   deploy-production:

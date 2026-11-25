@@ -80,8 +80,10 @@ BudgetApp/
 | `develop` | `/BudgetApp/dev/` | Preview — testen voor release |
 | `main` (major) | `/BudgetApp/vN/` | Archief van vorige major versies |
 
-Bij merge van `develop` → `main` deployt de CI automatisch naar productie.  
+Bij push naar `main` deployt de CI automatisch naar productie.  
 Bij een major versie-bump archiveert de CI de huidige productie naar `/vN/`.
+
+> **Deploy flow:** feature branch → PR naar `main` → merge → automatische deploy. Develop-branch wordt gebruikt voor versiebeheer maar deployt niet meer automatisch naar `/dev/`.
 
 ---
 
@@ -95,6 +97,7 @@ Zie [AZURE.md](AZURE.md) voor de volledige setup, secrets-beheer en kostenoverzi
 | Endpoint | Auth | Beschrijving |
 |---|---|---|
 | `GET /health` | Nee | Health check + versie |
+| `GET /health/db` | Nee | DB-connectie + migraties check (CI/CD pipeline) |
 | `POST /auth/login` | Nee | Wachtwoord → JWT token (60 min) |
 | `POST /bank/connect` | JWT | Start Enable Banking consent flow → redirect-URL naar bank |
 | `GET /bank/callback` | Nee | Ontvangt OAuth2 code → wisselt in voor session, slaat accounts op |

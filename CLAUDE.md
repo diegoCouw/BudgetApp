@@ -48,7 +48,7 @@ BudgetApp/
 │       │   ├── AuthEndpoints.cs      POST /auth/login
 │       │   ├── BankEndpoints.cs      POST /bank/connect, GET /bank/callback, GET /bank/sync
 │       │   │                         GET /transactions, PATCH /transactions/{id}/category
-│       │   └── HealthEndpoints.cs    GET /health
+│       │   └── HealthEndpoints.cs    GET /health, GET /health/db
 │       ├── Services/
 │       │   ├── TokenService.cs       JWT generatie (HS256, 60 min)
 │       │   ├── EnableBankingService.cs  Enable Banking API-wrapper (RSA-signed JWTs)
@@ -99,6 +99,7 @@ BudgetApp/
 | Methode | Pad | Auth | Beschrijving |
 |---|---|---|---|
 | `GET` | `/health` | Nee | Health check + versie |
+| `GET` | `/health/db` | Nee | DB-connectie + migraties check (gebruikt door CI/CD pipeline) |
 | `POST` | `/auth/login` | Nee | Wachtwoord → JWT token (60 min) |
 | `POST` | `/bank/connect` | JWT | Start Enable Banking consent → redirect-URL naar bank |
 | `GET` | `/bank/callback` | Nee | OAuth2 code → sessie + accounts opslaan |
@@ -271,14 +272,18 @@ gh pr create --title "feat: omschrijving" --body $body --base develop
 ## CI/CD
 
 ### ci.yml (GitHub Actions)
-- Triggert op push naar `main` en `develop`
-- Stappen: `npm install` → `npm test` → deploy PWA
-  - `main` → deploy naar `/BudgetApp/`
-  - `develop` → deploy naar `/BudgetApp/dev/`
+- Triggert op push naar `main` en `develop` (tests), en PR naar `main`
+- Tests: `npm ci` → `npm test`
+- Deploy PWA: **alleen bij push naar `main`** → `/BudgetApp/` (productie)
+- Geen automatische preview-deploy meer naar `/BudgetApp/dev/` (develop is puur versiebeheer)
 
 ### deploy-backend.yml (GitHub Actions)
 - Triggert op push naar `main` als `app/backend/**` gewijzigd is
-- Docker multi-stage build → push naar Azure Container Registry → deploy naar Azure Container Apps
+- Stappen: Docker build → push naar ghcr.io → `az containerapp update`
+- Na deploy:
+  1. Retry loop wacht tot container bereikbaar is (max 60s)
+  2. `[Azure]` Container App health check (`GET /health`) — gelogd in pipeline
+  3. `[Neon]` Database health check (`GET /health/db`) — connectie + migrations gelogd
 - Secrets nodig: `AZURE_CREDENTIALS`, `REGISTRY_LOGIN_SERVER`, `REGISTRY_USERNAME`, `REGISTRY_PASSWORD`, `BACKEND_URL`
 
 ---
@@ -409,7 +414,9 @@ Push naar main (met wijzigingen in app/backend/)
   → Docker multi-stage build (.NET 11)
   → Push naar ghcr.io/diegocouw/prospero-api:latest
   → az containerapp update
-  → Smoke test: GET /health
+  → Wacht op container start (retry loop, max 60s)
+  → [Azure] Container App health check: GET /health (gelogd in pipeline)
+  → [Neon] Database health check: GET /health/db (connectie + migrations, gelogd)
 ```
 
 ### GitHub Secrets (vereist voor CI/CD)
