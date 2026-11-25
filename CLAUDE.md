@@ -5,6 +5,25 @@
 
 ---
 
+## Snelstart voor nieuwe AI-sessies
+
+**Lees in deze volgorde — stop zodra je genoeg weet voor de taak:**
+
+1. **Dit bestand** (CLAUDE.md) volledig — bevat architectuur, stack, endpoints, DB-schema, git-workflow en todo-lijst
+2. **`pwa/js/format.js`** — gedeelde helpers en data (categorieën, formatters, WHATS_NEW)
+3. **`pwa/js/app.js`** — boot-volgorde en globale state van de PWA
+4. **`app/backend/Program.cs`** — DI, middleware, CORS-configuratie van de backend
+5. **`pwa/js/bank.js`** — bank tab: authenticatie, sync, push notificaties
+
+**Niet nodig bij PWA-taken:** `app/backend/` — **Niet nodig bij backend-taken:** `pwa/`
+
+**Verplichte werkwijze (niet-onderhandelbaar):**
+- Nooit direct naar `main` pushen — altijd feature branch → PR
+- Elke nieuwe code krijgt maximaal mogelijke nuttige tests (geen coverage-theater)
+- Waarschuwen vóór acties die Azure-kosten verbruiken
+
+---
+
 ## Project in één zin
 
 Prospero is een persoonlijke budget-tracker-app voor één gebruiker (Diego). Kernfunctionaliteit: elke ochtend banktransacties binnenpullen → push-notificatie → transacties categoriseren. Cash-invoer en digitale betalingen zijn secundair.
@@ -220,12 +239,6 @@ Functies:
 - unsubscribePush()                       — DELETE /push/subscribe + browser unsubscribe
 ```
 
-**Push notificaties — setup na merge:**
-```javascript
-// pwa/js/bank.js, regel 1:
-var VAPID_PUBLIC_KEY = '';  // ← vul public key in na: npx web-push generate-vapid-keys
-```
-
 ---
 
 ## PWA — Laadvolgorde scripts
@@ -343,11 +356,11 @@ Backend coverage: alle endpoints en services, uitgezonderd EF Core migrations, g
 ## TODO-lijst (bijwerken bij elke sessie)
 
 ### In uitvoering
-- **What's new scherm** — PR #55 open (feat/whats-new)
+*(geen open PRs)*
 
 ### Te doen — geprioriteerd
 1. **Service health warnings** — in-app waarschuwing als bank consent vervalt, secrets oud zijn
-3. **Maandoverzicht** — per categorie uitklappen + totaalsom, maaltijdcheques apart
+2. **Maandoverzicht** — per categorie uitklappen + totaalsom, maaltijdcheques apart
 4. **Maandrapport** — einde maand overzicht: top 3 uitgaven, gespaarde bedrag, vergelijking vorige maand
 5. **Transactie opsplitsen** — één transactie onder meerdere categorieën
 6. **Digitale transacties wissen** — clear DB voor geselecteerde rekeningen met bevestigingsdialoog
@@ -359,6 +372,7 @@ Backend coverage: alle endpoints en services, uitgezonderd EF Core migrations, g
 12. **Cash betalingen manueel invoeren**
 13. **Frontend migratie naar Angular**
 14. **Redesign van de app**
+15. **Onderhoudswaarschuwingen in app** — in-app melding als packages, Node.js of .NET updates beschikbaar zijn; laagste prioriteit
 
 ### Afgerond
 - ✅ Neon PostgreSQL tabellen aanmaken (EF Core migrations, key-value connection string)
