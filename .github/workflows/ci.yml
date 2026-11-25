@@ -2,7 +2,7 @@ name: CI / Deploy
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -77,3 +77,35 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: pwa
           keep_files: true
+
+  # ── Verwijder gemergte branches ───────────────────────────────────────────
+  cleanup-branches:
+    name: Verwijder gemergte branches
+    needs: deploy-production
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verwijder branches die in main zitten
+        run: |
+          git fetch --prune origin
+          MERGED=$(git branch -r --merged origin/main \
+            | grep -v 'origin/main' \
+            | grep -v 'origin/gh-pages' \
+            | sed 's|origin/||' \
+            | tr -d ' ')
+          if [ -z "$MERGED" ]; then
+            echo "Geen branches te verwijderen"
+            exit 0
+          fi
+          echo "Gemergte branches:"
+          echo "$MERGED"
+          for branch in $MERGED; do
+            echo "Verwijder: $branch"
+            git push origin --delete "$branch" || echo "Kon $branch niet verwijderen (al weg)"
+          done
