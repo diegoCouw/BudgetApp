@@ -53,10 +53,26 @@ jobs:
       - name: Integration tests draaien
         run: dotnet test app/backend.Tests/Prospero.Api.Tests.csproj -v minimal --filter "FullyQualifiedName~.Integration."
 
+  # ── Aggregator: vereist door branch protection rule ───────────────────────
+  tests:
+    name: Tests
+    needs: [test-pwa, test-backend-unit, test-backend-integration]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Controleer of alle tests geslaagd zijn
+        run: |
+          if [ "${{ needs.test-pwa.result }}" != "success" ] || \
+             [ "${{ needs.test-backend-unit.result }}" != "success" ] || \
+             [ "${{ needs.test-backend-integration.result }}" != "success" ]; then
+            echo "Een of meer testjobs zijn mislukt"
+            exit 1
+          fi
+
   # ── Deploy productie (main → /) ────────────────────────────────────────────
   deploy-production:
     name: Deploy productie
-    needs: [test-pwa, test-backend-unit, test-backend-integration]
+    needs: tests
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
