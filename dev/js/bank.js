@@ -131,6 +131,10 @@ async function renderBankMain() {
           '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>' +
           'Synchroniseer' +
         '</button>' +
+        '<button class="btn-ghost bank-action-btn bank-disconnect-btn" id="bank-disconnect-btn">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/><line x1="1" y1="1" x2="23" y2="23"/></svg>' +
+          'Verbreek koppeling' +
+        '</button>' +
         '<button class="btn-ghost bank-logout-btn" id="bank-logout-btn">' +
           '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>' +
         '</button>' +
@@ -146,6 +150,7 @@ async function renderBankMain() {
 
   document.getElementById('bank-connect-btn').addEventListener('click', doConnect);
   document.getElementById('bank-sync-btn').addEventListener('click', doSync);
+  document.getElementById('bank-disconnect-btn').addEventListener('click', doDisconnect);
   document.getElementById('bank-logout-btn').addEventListener('click', function () {
     clearToken(); renderBankLogin();
   });
@@ -155,6 +160,40 @@ async function renderBankMain() {
 
   _bankPage = 1;
   await loadBankTxs();
+}
+
+async function doDisconnect() {
+  var btn = document.getElementById('bank-disconnect-btn');
+  if (!btn) return;
+
+  if (btn.dataset.confirm !== 'yes') {
+    btn.dataset.confirm = 'yes';
+    btn.textContent = 'Zeker verbreken?';
+    btn.classList.add('bank-disconnect-confirm');
+    setTimeout(function () {
+      if (btn.dataset.confirm === 'yes') {
+        btn.dataset.confirm = '';
+        btn.classList.remove('bank-disconnect-confirm');
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/><line x1="1" y1="1" x2="23" y2="23"/></svg>Verbreek koppeling';
+      }
+    }, 4000);
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Bezig…';
+  var resp = await apiCall('DELETE', '/bank/session');
+  if (!resp) return;
+  if (resp.ok) {
+    setStatus('Bankverbinding verbroken');
+  } else {
+    setStatus('Verbreken mislukt', true);
+    btn.disabled = false;
+  }
+  btn.dataset.confirm = '';
+  btn.classList.remove('bank-disconnect-confirm');
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/><line x1="1" y1="1" x2="23" y2="23"/></svg>Verbreek koppeling';
 }
 
 async function doConnect() {

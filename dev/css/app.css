@@ -563,6 +563,8 @@ select.form-in { cursor: pointer; }
   background: none; border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
 }
 .bank-logout-btn:hover { color: var(--danger); border-color: var(--danger); }
+.bank-disconnect-btn { color: var(--danger); border-color: var(--danger); }
+.bank-disconnect-confirm { background: var(--danger); color: #fff; border-color: var(--danger); font-weight: 600; }
 .bank-status { font-size: .8rem; color: var(--muted); padding: 6px 2px 0; min-height: 20px; }
 .bank-status-err { color: var(--danger); }
 
