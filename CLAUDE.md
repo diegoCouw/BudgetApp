@@ -16,7 +16,6 @@ Prospero is een persoonlijke budget-tracker-app voor één gebruiker (Diego). Ke
 | Omgeving | URL |
 |---|---|
 | PWA productie | `https://diegocouw.github.io/BudgetApp/` |
-| PWA preview (develop) | `https://diegocouw.github.io/BudgetApp/dev/` |
 | Backend API | `https://prospero-api.agreeablecliff-581de768.northeurope.azurecontainerapps.io` |
 | GitHub repo | `https://github.com/diegoCouw/BudgetApp` |
 
@@ -242,14 +241,15 @@ Geconfigureerd in `Program.cs`, policy `"frontend"`:
 ## Git workflow — STRIKT EN NIET-ONDERHANDELBAAR
 
 ```
-feature branch  →  PR naar develop  →  PR develop naar main
+feature branch  →  PR naar main  →  merge  →  automatische deploy
 ```
 
 - **NOOIT direct naar main pushen** — altijd via PR, ook voor kleine fixes
-- **NOOIT direct naar develop pushen** — altijd via feature branch
+- Develop-branch is afgeschaft (singledev privé app, geen preview-omgeving nodig)
 - Uitzonderingen vereisen **expliciete toestemming van de gebruiker**
 - Na elke PR-merge: README en CLAUDE.md bijwerken als de inhoud veranderd is
 - Branch-naamgeving: `feat/naam`, `fix/naam`, `chore/naam`
+- Branches worden automatisch verwijderd na merge (GitHub auto-delete ingeschakeld + cleanup-job in ci.yml)
 
 ### PR aanmaken via gh CLI
 
@@ -264,7 +264,7 @@ $body = @'
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 '@
-gh pr create --title "feat: omschrijving" --body $body --base develop
+gh pr create --title "feat: omschrijving" --body $body --base main
 ```
 
 ---
@@ -272,10 +272,10 @@ gh pr create --title "feat: omschrijving" --body $body --base develop
 ## CI/CD
 
 ### ci.yml (GitHub Actions)
-- Triggert op push naar `main` en `develop` (tests), en PR naar `main`
+- Triggert op push naar `main` en PR naar `main`
 - Tests: `npm ci` → `npm test`
-- Deploy PWA: **alleen bij push naar `main`** → `/BudgetApp/` (productie)
-- Geen automatische preview-deploy meer naar `/BudgetApp/dev/` (develop is puur versiebeheer)
+- Deploy PWA: bij push naar `main` → `/BudgetApp/` (productie)
+- Na succesvolle deploy: `cleanup-branches` job verwijdert alle gemergte branches automatisch
 
 ### deploy-backend.yml (GitHub Actions)
 - Triggert op push naar `main` als `app/backend/**` gewijzigd is
@@ -318,25 +318,23 @@ Coverage: `pwa/js/format.js` en `pwa/js/db.js`.
 *(geen)*
 
 ### Te doen — geprioriteerd
-1. **Bank koppeling afmelden** — sessie verwijderen uit DB en ontkoppelen van bank
+1. **Error handling & logging** — try-catch op alle endpoints, gestructureerde logging (Serilog), raadpleegbaar in Azure + browser
 2. **What's new scherm** — na app-update kort venster met nieuwe features, enkel als er nieuws is
-3. **Error handling & logging** — try-catch op alle endpoints, gestructureerde logging (Serilog), raadpleegbaar in Azure + browser
-4. **DB migration check** — health endpoint verifieert dat alle EF Core migrations aanwezig zijn
-5. **Service health warnings** — in-app waarschuwing als bank consent vervalt, secrets oud zijn
-6. **Dagelijkse automatische bank sync** — cron job elke ochtend
-7. **Push notificaties** — melding als nieuwe betalingen klaarstaan om te categoriseren
-8. **Maandoverzicht** — per categorie uitklappen + totaalsom, maaltijdcheques apart
-9. **Maandrapport** — einde maand overzicht: top 3 uitgaven, gespaarde bedrag, vergelijking vorige maand
-10. **Transactie opsplitsen** — één transactie onder meerdere categorieën
-11. **Digitale transacties wissen** — clear DB voor geselecteerde rekeningen met bevestigingsdialoog
-12. **Code coverage ~100%** — unit tests voor alle backend endpoints en services
-13. **PWA migreren naar TypeScript**
-14. **Bank API koppeling productie** — echte BNP Fortis app aanmaken op enablebanking.com
-15. **Pluxee publieke API onderzoeken** — maaltijdcheques rekening
-16. **Backup knop** — exporteer data naar iPhone Bestanden-app
-17. **Cash betalingen manueel invoeren**
-18. **Frontend migratie naar Angular**
-19. **Redesign van de app**
+3. **Service health warnings** — in-app waarschuwing als bank consent vervalt, secrets oud zijn
+4. **Dagelijkse automatische bank sync** — cron job elke ochtend
+5. **Push notificaties** — melding als nieuwe betalingen klaarstaan om te categoriseren
+6. **Maandoverzicht** — per categorie uitklappen + totaalsom, maaltijdcheques apart
+7. **Maandrapport** — einde maand overzicht: top 3 uitgaven, gespaarde bedrag, vergelijking vorige maand
+8. **Transactie opsplitsen** — één transactie onder meerdere categorieën
+9. **Digitale transacties wissen** — clear DB voor geselecteerde rekeningen met bevestigingsdialoog
+10. **Code coverage ~100%** — unit tests voor alle backend endpoints en services
+11. **PWA migreren naar TypeScript**
+12. **Bank API koppeling productie** — echte BNP Fortis app aanmaken op enablebanking.com
+13. **Pluxee publieke API onderzoeken** — maaltijdcheques rekening
+14. **Backup knop** — exporteer data naar iPhone Bestanden-app
+15. **Cash betalingen manueel invoeren**
+16. **Frontend migratie naar Angular**
+17. **Redesign van de app**
 
 ### Afgerond
 - ✅ Neon PostgreSQL tabellen aanmaken (EF Core migrations, key-value connection string)
@@ -347,6 +345,11 @@ Coverage: `pwa/js/format.js` en `pwa/js/db.js`.
 - ✅ Transacties categoriseren (emoji, kleuren, filterbar, eigen categorie)
 - ✅ CORS toegang GitHub Pages
 - ✅ Visual Studio solution file (Prospero.slnx)
+- ✅ Bank koppeling afmelden — `DELETE /bank/session`, inline twee-stap bevestiging in PWA (v1.3.0)
+- ✅ DB migration check — `/health/db` endpoint controleert connectie + pending migrations
+- ✅ Documentatie map — 8 gidsen in `docs/`, `.claude/skills/update-docs.md`
+- ✅ Deploy flow vereenvoudigd — enkel main, geen develop meer, health checks na deploy
+- ✅ Branch cleanup — auto-delete na merge (GitHub instelling + ci.yml cleanup-job)
 
 ---
 
